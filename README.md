@@ -47,7 +47,7 @@ aaa reg --email you@example.com --agree https://letsencrypt.org/documents/LE-SA-
 
 ## Authorization
 
-`aaa` implements 3 solver for challenges: `http-01`, `s3-http-01` and `dns-01`.
+`aaa` implements 3 types of solver for challenges: `http-01`, `s3-http-01` and `dns-01`.
 
 - http-01: This is for debugging. Do not use unless you know what this is.
 - s3-http-01: This is a workaround untill `dns-01` is properly landed on Let's Encrypt's side.
@@ -76,7 +76,7 @@ Example for nginx:
 
 ```txt
 location /.well-known/acme-challenge/ {
-    return 302 https://s3-ap-northeast-1.amazonaws.com/your-s3-bucket$request_uri;
+    return 302 https://s3-{region}.amazonaws.com/your-s3-bucket$request_uri;
 }
 ```
 
@@ -89,13 +89,13 @@ It's time to authorize!
 aaa authz --email you@example.com --domain le-test-01.example.com --challenge s3-http-01 --s3-bucket your-s3-bucket
 ```
 
-Bounus: You authorize more domain, you will get a certificate that has SAN for your domains.
+Bonus: You authorize more domains, you will get a certificate that has SAN for your domains.
 
 ```sh
 aaa authz --email you@example.com --domain le-test-02.example.com --challenge s3-http-01 --s3-bucket your-s3-bucket
 ```
 
-## certificate issuance
+## Certificate issuance
 
 Let's issue a certifiate for two domains `le-test-0[12].example.com`. If you don't want to issue a certificate with SAN, just drop `--domain` argument.
 
@@ -115,5 +115,5 @@ aaa cert --email you@example.com --common-name le-test-01.example.com --domain l
 
 - Integrate [S3 Event Notifications](http://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html) ...
   - To automate the installation of certificates (e.g. ELB)
-  - To manage renewal of certificates (e.g. Use DynamoDB as database)
+  - To manage renewal of certificates (e.g. Use DynamoDB as a database)
 - Integrate Let's encrypt with Slack (e.g. `@bot let's encrypt with api.example.com` and the certificate will be available on S3...)
