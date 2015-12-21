@@ -35,6 +35,8 @@ Finally, you are able to request ACME server to issue your certificates.
 In default, ACME API endpoint in `aaa` points to LE's staging environment.
 After you grasp how `aaa` works, you can point the endpoint to LE's production environment.
 
+All information is currently stored at `aaa-agent` directory on the current working directory.
+
 ```sh
 export AAA_DIRECTORY_URL=https://acme-v01.api.letsencrypt.org/directory
 ```
