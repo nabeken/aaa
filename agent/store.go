@@ -15,7 +15,7 @@ import (
 )
 
 /*
-prefix: {{letsencrypt-base}}/accounts/
+prefix: {{letsencrypt-base}}/aaa-agent/
 
 Per Store instance:
 {{email}}/info
@@ -32,6 +32,8 @@ Per Store instance:
 type Store struct {
 	email string
 	fs    afero.Fs
+
+	prefix string // FIXME: should be configurable
 }
 
 // NewStore initialize fs. It makes directory named email.
@@ -40,19 +42,22 @@ func NewStore(email string, fs afero.Fs) (*Store, error) {
 		return nil, errors.New("aaa: email must not be empty")
 	}
 
+	s := &Store{
+		email:  email,
+		fs:     fs,
+		prefix: "aaa-agent",
+	}
+
 	for _, dir := range []string{
-		joinPrefix(email, "info"),
-		joinPrefix(email, "domain"),
+		s.joinPrefix("info"),
+		s.joinPrefix("domain"),
 	} {
-		if err := fs.MkdirAll(dir, 0700); err != nil {
+		if err := s.fs.MkdirAll(dir, 0700); err != nil {
 			return nil, err
 		}
 	}
 
-	return &Store{
-		email: email,
-		fs:    fs,
-	}, nil
+	return s, nil
 }
 
 // LoadKey returns RSA private key in JWK.
@@ -222,7 +227,7 @@ func (s *Store) mkDomainDir(domain string) error {
 }
 
 func (s *Store) joinPrefix(fns ...string) string {
-	return joinPrefix(append([]string{s.email}, fns...)...)
+	return joinPrefix(append([]string{s.prefix, s.email}, fns...)...)
 }
 
 func joinPrefix(fns ...string) string {

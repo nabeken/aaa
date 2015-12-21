@@ -3,6 +3,9 @@
 *.a
 *.so
 
+# aaa's data dir
+aaa-agent/
+
 # Complied binary
 aaa
 
