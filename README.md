@@ -66,15 +66,16 @@ With `s3-http-01`, information needed for challenge is stored on S3 bucket by `a
 A target web server must be configured in advance to redirect a request from LE to S3 bucket.
 
 ```txt
-+-----+   new-authz    +-------------+   GET /.well-known/acme-challenge/{token}  +--------+
-|     |  ----------->  |             | -----------------------------------------> |        |
-| aaa |   challenge    | ACME server |  redirect to s3://foobar/.well-known/....  | target |
-|     |  <-----------  |             | <----------------------------------------- |        |
-+--+--+                +-------------+                                            +--------+
++-----+  (1) new-authz    +-------------+  (5) GET /.well-known/acme-challenge/{token}   +--------+
+|     |  -------------->  |             |  ------------------------------------------->  |        |
+| aaa |  (2) challenge    | ACME server |  (6) redirect to s3://foobar/.well-known/....  | target |
+|     |  <--------------  |             |  <-------------------------------------------  |        |
+|     |  (4) authz        |             |                                                +--------+
++-----+  -------------->  +-------------+
    |                         |
-   |                         | GET /.well-known/acme-challenge/{token}
+   |                         | (7) GET /.well-known/acme-challenge/{token}
    |                        \|/
-   |         put        +----------+
+   |     (3) put        +----------+
    +------------------> |    S3    |
                         +----------+
 ```
