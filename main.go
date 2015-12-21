@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	app := kingpin.New("aaa", "ACME Agent For AWS")
+	app := kingpin.New("aaa", "ACME Agent For AWS environment")
 
 	for _, install := range []func(*kingpin.Application){
 		InstallRegCommand,
