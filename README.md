@@ -1,6 +1,6 @@
 # aaa
 
-AAA is [ACME](https://tools.ietf.org/html/draft-ietf-acme-acme-01) Agent for AWS environment.
+AAA is an [ACME](https://tools.ietf.org/html/draft-ietf-acme-acme-01) Agent for AWS environment.
 All information will be stored on [S3 with SSE-KMS](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html).
 This design allows us to run ACME agent in stateless.
 
