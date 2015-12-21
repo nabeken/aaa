@@ -3,6 +3,9 @@
 *.a
 *.so
 
+# Complied binary
+aaa
+
 # Folders
 _obj
 _test
