@@ -32,6 +32,13 @@ To issue the certificate, you must:
 
 Finally, you are able to request ACME server to issue your certificates.
 
+In default, ACME API endpoint in `aaa` points to LE's staging environment.
+After you grasp how `aaa` works, you can point the endpoint to LE's production environment.
+
+```sh
+export AAA_DIRECTORY_URL=https://acme-v01.api.letsencrypt.org/directory
+```
+
 ## Registration
 
 ```sh
@@ -50,7 +57,7 @@ aaa reg --email you@example.com --agree https://letsencrypt.org/documents/LE-SA-
 `aaa` implements 3 types of solver for challenges: `http-01`, `s3-http-01` and `dns-01`.
 
 - http-01: This is for debugging. Do not use unless you know what this is.
-- s3-http-01: This is a workaround untill `dns-01` is properly landed on Let's Encrypt's side.
+- s3-http-01: This is a workaround until `dns-01` is properly landed on Let's Encrypt's side.
 - dns-01: This will be our main method to automate things but it does not work due to LE's bad.
 
 We introduce `s3-http-01` method here.
