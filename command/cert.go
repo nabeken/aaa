@@ -9,7 +9,6 @@ import (
 
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/nabeken/aaa/agent"
-	"github.com/spf13/afero"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -21,14 +20,14 @@ type CertCommand struct {
 }
 
 func (c *CertCommand) Run(ctx *kingpin.ParseContext) error {
-	store, err := agent.NewStore(c.Email, new(afero.OsFs))
+	store, err := agent.NewStore(c.Email, new(agent.OSFiler))
 	if err != nil {
 		return err
 	}
 
 	// Loading certificate unless we set Renewal flag
 	if !c.Renewal {
-		if cert, err := store.LoadCert(c.CommonName); err != nil && !os.IsNotExist(err) {
+		if cert, err := store.LoadCert(c.CommonName); err != nil && err != agent.ErrFileNotFound {
 			// something is wrong
 			return err
 		} else if err == nil {

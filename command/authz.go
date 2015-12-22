@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aws-go-s3/bucket"
-	"github.com/spf13/afero"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -24,13 +23,13 @@ type AuthzCommand struct {
 }
 
 func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
-	store, err := agent.NewStore(c.Email, new(afero.OsFs))
+	store, err := agent.NewStore(c.Email, new(agent.OSFiler))
 	if err != nil {
 		return err
 	}
 
 	// If we have authorized domain, we skip authorization request.
-	if authz, err := store.LoadAuthorization(c.Domain); err != nil && !os.IsNotExist(err) {
+	if authz, err := store.LoadAuthorization(c.Domain); err != nil && err != agent.ErrFileNotFound {
 		// something is wrong
 		return err
 	} else if err == nil {

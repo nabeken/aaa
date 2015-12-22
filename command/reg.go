@@ -9,7 +9,6 @@ import (
 
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/nabeken/aaa/agent"
-	"github.com/spf13/afero"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -19,13 +18,13 @@ type RegCommand struct {
 }
 
 func (c *RegCommand) Run(ctx *kingpin.ParseContext) error {
-	store, err := agent.NewStore(c.Email, new(afero.OsFs))
+	store, err := agent.NewStore(c.Email, new(agent.OSFiler))
 	if err != nil {
 		return err
 	}
 
 	var publicKey jwk.Key
-	if key, err := store.LoadPublicKey(); err != nil && os.IsNotExist(err) {
+	if key, err := store.LoadPublicKey(); err != nil && err == agent.ErrFileNotFound {
 		log.Println("INFO: account key pair is not found. Creating new account key pair...")
 
 		privkey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -69,7 +68,7 @@ func (c *RegCommand) Run(ctx *kingpin.ParseContext) error {
 	// try to load account info
 	account, err = store.LoadAccount()
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if err != agent.ErrFileNotFound {
 			return err
 		}
 
