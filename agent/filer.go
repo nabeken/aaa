@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/nabeken/aws-go-s3/bucket"
 	"github.com/nabeken/aws-go-s3/bucket/option"
 )
 
 var (
-	// ErrFileNotFound is the error returned by Filter interface when file is not found.
+	// ErrFileNotFound is the error returned by Filer interface when file is not found.
 	ErrFileNotFound = errors.New("aaa: file not found")
 )
 
@@ -33,16 +35,19 @@ type OSFiler struct {
 // WriteFile writes data to filename. WriteFile also creates any directories by using
 // os.MkdirAll.
 func (f *OSFiler) WriteFile(filename string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(filepath.Join(f.BaseDir, filename)), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(f.Join(f.BaseDir, filename)), 0700); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(f.BaseDir, filename), data, 0600)
+	return ioutil.WriteFile(f.Join(f.BaseDir, filename), data, 0600)
 }
 
 func (f *OSFiler) ReadFile(filename string) ([]byte, error) {
-	data, err := ioutil.ReadFile(filepath.Join(f.BaseDir, filename))
-	if err != nil && os.IsNotExist(err) {
-		return nil, ErrFileNotFound
+	data, err := ioutil.ReadFile(f.Join(f.BaseDir, filename))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrFileNotFound
+		}
+		return nil, err
 	}
 	return data, err
 }
@@ -75,6 +80,10 @@ func (f *S3Filer) WriteFile(key string, data []byte) error {
 func (s *S3Filer) ReadFile(key string) ([]byte, error) {
 	object, err := s.bucket.GetObject(key)
 	if err != nil {
+		s3err, ok := err.(awserr.RequestFailure)
+		if ok && s3err.StatusCode() == http.StatusNotFound {
+			return nil, ErrFileNotFound
+		}
 		return nil, err
 	}
 	defer object.Body.Close()

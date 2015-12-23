@@ -120,23 +120,17 @@ type Client struct {
 
 // NewClient initializes ACME client and returns the client.
 // If it fails to initialize the client, it will return an error.
-func NewClient(dirURL string, store *Store) (*Client, error) {
-	c := &Client{
+func NewClient(dirURL string, store *Store) *Client {
+	return &Client{
 		httpClient:   http.DefaultClient,
 		store:        store,
 		directoryURL: dirURL,
 	}
-
-	if err := c.init(); err != nil {
-		return nil, err
-	}
-
-	return c, nil
 }
 
 // init initialize ACME client. It fetch the directory resource and also update
 // nonce internally.
-func (c *Client) init() error {
+func (c *Client) Init() error {
 	privateKey, err := c.store.LoadPrivateKey()
 	if err != nil {
 		return err

@@ -8,8 +8,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/lestrrat/go-jwx/jwk"
+	"github.com/nabeken/aws-go-s3/bucket"
 )
 
 /*
@@ -28,19 +31,29 @@ Per Store instance:
 */
 
 type Store struct {
-	email string
-	filer Filer
+	email  string
+	filer  Filer
+	prefix string
 }
 
-// NewStore initialize fs. It makes directory named email.
-func NewStore(email string, filer Filer) (*Store, error) {
+func NewStore(email string, s3Bucket *bucket.Bucket) (*Store, error) {
 	if email == "" {
 		return nil, errors.New("aaa: email must not be empty")
 	}
 
+	var filer Filer
+	if debug, _ := strconv.ParseBool(os.Getenv("AAA_DEBUG")); debug {
+		filer = new(OSFiler)
+	} else {
+		filer = &S3Filer{
+			bucket: s3Bucket,
+		}
+	}
+
 	s := &Store{
-		email: email,
-		filer: filer,
+		email:  email,
+		filer:  filer,
+		prefix: "aaa-data",
 	}
 
 	return s, nil
@@ -170,5 +183,5 @@ func (s *Store) LoadAccount() (*Account, error) {
 }
 
 func (s *Store) joinPrefix(fns ...string) string {
-	return s.filer.Join(append([]string{s.email}, fns...)...)
+	return s.filer.Join(append([]string{s.prefix, s.email}, fns...)...)
 }
