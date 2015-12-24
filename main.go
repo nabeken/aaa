@@ -26,12 +26,14 @@ func realMain() error {
 
 	email := app.Flag("email", "Email Address").Required().String()
 	s3Bucket := app.Flag("s3-bucket", "S3 Bucket Name").String()
+	kmsKeyId := app.Flag("s3-kms-key", "KMS Key ID for S3 SSE-KMS").Required().String()
 
 	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	// initialize store and client
 	s3b := bucket.New(s3.New(session.New()), *s3Bucket)
-	store, err := agent.NewStore(*email, s3b)
+	filer := agent.NewS3Filer(s3b, *kmsKeyId)
+	store, err := agent.NewStore(*email, filer)
 	if err != nil {
 		return err
 	}

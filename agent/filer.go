@@ -58,11 +58,13 @@ func (s *OSFiler) Join(elem ...string) string {
 
 type S3Filer struct {
 	bucket *bucket.Bucket
+	keyId  string
 }
 
-func NewS3Filer(bucket *bucket.Bucket) *S3Filer {
+func NewS3Filer(bucket *bucket.Bucket, keyId string) *S3Filer {
 	return &S3Filer{
 		bucket: bucket,
+		keyId:  keyId,
 	}
 }
 
@@ -71,6 +73,7 @@ func (f *S3Filer) WriteFile(key string, data []byte) error {
 	_, err := f.bucket.PutObject(
 		key,
 		bytes.NewReader(data),
+		option.SSEKMSKeyID(f.keyId),
 		option.ContentLength(cl),
 		option.ACLPrivate(),
 	)

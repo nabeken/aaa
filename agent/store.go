@@ -12,7 +12,6 @@ import (
 	"strconv"
 
 	"github.com/lestrrat/go-jwx/jwk"
-	"github.com/nabeken/aws-go-s3/bucket"
 )
 
 /*
@@ -36,18 +35,13 @@ type Store struct {
 	prefix string
 }
 
-func NewStore(email string, s3Bucket *bucket.Bucket) (*Store, error) {
+func NewStore(email string, filer Filer) (*Store, error) {
 	if email == "" {
 		return nil, errors.New("aaa: email must not be empty")
 	}
 
-	var filer Filer
 	if debug, _ := strconv.ParseBool(os.Getenv("AAA_DEBUG")); debug {
 		filer = new(OSFiler)
-	} else {
-		filer = &S3Filer{
-			bucket: s3Bucket,
-		}
 	}
 
 	s := &Store{
