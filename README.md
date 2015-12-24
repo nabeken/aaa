@@ -14,6 +14,7 @@ This design allows us to run ACME agent in stateless.
 - :heavy_check_mark: Create CSR with [SAN (Subject Alternative Name)](https://en.wikipedia.org/wiki/SubjectAltName)
 - :heavy_check_mark: Issue certificates
 - :heavy_check_mark: Store data on S3 with SSE-KMS
+- :construction: Configuration by TOML
 - :construction: AWS Lambda build
 
 ## Installation
@@ -26,14 +27,14 @@ go get -u github.com/nabeken/aaa
 
 ## S3 Bucket and KMS Usage
 
-`AAA` requires
+`AAA` requires:
 
-- KMS Encryption Key for encrypting all data in the S3 bucket
-- 1 dedicated S3 bucket
+- A dedicated S3 bucket
   - `/.well-known/*` will be used to answer http-01 challenge so under this prefix will be public
   - `/aaa-data/*` will be used for all generated secrets and certificates so under this prefix MUST be encrypted
+- KMS Encryption Key for encrypting all data in the S3 bucket
 
-To protect you from unwanted data uploading without encryption, I highly recommend you to add a bucket policy like this:
+To protect you from uploading data without encryption, I highly recommend you to add a bucket policy like this:
 
 ```json
 {
