@@ -9,28 +9,22 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aws-go-s3/bucket"
-	"github.com/spf13/afero"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type AuthzCommand struct {
-	Email     string
 	Domain    string
 	Challenge string
-	S3Bucket  string
+
+	Client *agent.Client
+	Store  *agent.Store
+	Bucket *bucket.Bucket
 }
 
-func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
-	store, err := agent.NewStore(c.Email, new(afero.OsFs))
-	if err != nil {
-		return err
-	}
-
+func (c *AuthzCommand) Run() error {
 	// If we have authorized domain, we skip authorization request.
-	if authz, err := store.LoadAuthorization(c.Domain); err != nil && !os.IsNotExist(err) {
+	if authz, err := c.Store.LoadAuthorization(c.Domain); err != nil && err != agent.ErrFileNotFound {
 		// something is wrong
 		return err
 	} else if err == nil {
@@ -47,16 +41,6 @@ func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
 
 	log.Printf("INFO: start authorization for %s with %s", c.Domain, c.Challenge)
 
-	dirURL := agent.DefaultDirectoryURL
-	if url := os.Getenv("AAA_DIRECTORY_URL"); url != "" {
-		dirURL = url
-	}
-
-	client, err := agent.NewClient(dirURL, store)
-	if err != nil {
-		return err
-	}
-
 	newAuthzReq := &agent.NewAuthorizationRequest{
 		Identifier: &agent.Identifier{
 			Type:  "dns",
@@ -64,7 +48,7 @@ func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
 		},
 	}
 
-	authzResp, err := client.NewAuthorization(newAuthzReq)
+	authzResp, err := c.Client.NewAuthorization(newAuthzReq)
 	if err != nil {
 		return err
 	}
@@ -95,13 +79,8 @@ func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
 			return errors.New("aaa: no HTTP challenge and its combination found")
 		}
 
-		if c.S3Bucket == "" {
-			return errors.New("aaa: S3 Bucket Name must be specified with s3-http-01")
-		}
-
-		s3Bucket := bucket.New(s3.New(session.New()), c.S3Bucket)
 		challenge = httpChallenge
-		challengeSolver = agent.NewS3HTTPChallengeSolver(s3Bucket, httpChallenge, c.Domain)
+		challengeSolver = agent.NewS3HTTPChallengeSolver(c.Bucket, httpChallenge, c.Domain)
 
 	case "dns-01":
 		dnsChallenge, found := agent.FindDNSChallenge(authzResp)
@@ -116,7 +95,7 @@ func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
 		return fmt.Errorf("aaa: challenge %s is not supported")
 	}
 
-	publicKey, err := store.LoadPublicKey()
+	publicKey, err := c.Store.LoadPublicKey()
 	if err != nil {
 		return err
 	}
@@ -132,11 +111,11 @@ func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
 		return err
 	}
 
-	if err := client.SolveChallenge(challenge, keyAuthz); err != nil {
+	if err := c.Client.SolveChallenge(challenge, keyAuthz); err != nil {
 		return err
 	}
 
-	if err := client.WaitChallengeDone(challenge); err != nil {
+	if err := c.Client.WaitChallengeDone(challenge); err != nil {
 		log.Print("INFO: challenge has been failed")
 		return err
 	}
@@ -146,12 +125,12 @@ func (c *AuthzCommand) Run(ctx *kingpin.ParseContext) error {
 	}
 
 	// getting the latest authorization status
-	currentAuthz, err := client.GetAuthorization(authzResp.URL)
+	currentAuthz, err := c.Client.GetAuthorization(authzResp.URL)
 	if err != nil {
 		return err
 	}
 
-	if err := store.SaveAuthorization(currentAuthz); err != nil {
+	if err := c.Store.SaveAuthorization(currentAuthz); err != nil {
 		return err
 	}
 

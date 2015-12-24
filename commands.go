@@ -5,29 +5,32 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-func InstallRegCommand(app *kingpin.Application) {
+func InstallRegCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.RegCommand) {
 	cmd := &command.RegCommand{}
-	reg := app.Command("reg", "Register account.").Action(cmd.Run)
-	reg.Flag("email", "Email Address for registration").Required().StringVar(&cmd.Email)
+
+	reg := app.Command("reg", "Register account.")
 	reg.Flag("agree", "Agree with given TOS").StringVar(&cmd.AgreeTOS)
+
+	return reg, cmd
 }
 
-func InstallAuthzCommand(app *kingpin.Application) {
+func InstallAuthzCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.AuthzCommand) {
 	cmd := &command.AuthzCommand{}
-	authz := app.Command("authz", "Authorize domain.").Action(cmd.Run)
-	authz.Flag("email", "Email Address used for registration").Required().StringVar(&cmd.Email)
+	authz := app.Command("authz", "Authorize domain.")
 	authz.Flag("domain", "Domain to be authorized").Required().StringVar(&cmd.Domain)
 	authz.Flag("challenge", "Challenge Type").Default("http-01").StringVar(&cmd.Challenge)
-	authz.Flag("s3-bucket", "S3 Bucket Name to be used with s3-http-01").StringVar(&cmd.S3Bucket)
+
+	return authz, cmd
 }
 
-func InstallCertCommand(app *kingpin.Application) {
+func InstallCertCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.CertCommand) {
 	cmd := &command.CertCommand{}
-	cert := app.Command("cert", "Issue certificate.").Action(cmd.Run)
-	cert.Flag("email", "Email Address used for registration").Required().StringVar(&cmd.Email)
+	cert := app.Command("cert", "Issue certificate.")
 	cert.Flag("cn", "Common Name to be issued").Required().StringVar(&cmd.CommonName)
 	cert.Flag("domain", "Domains to be use as Subject Alternative Name").
 		StringsVar(&cmd.Domains)
 
 	cert.Flag("renewal", "Renew the certificate").BoolVar(&cmd.Renewal)
+
+	return cert, cmd
 }

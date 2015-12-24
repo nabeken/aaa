@@ -5,27 +5,22 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/nabeken/aaa/agent"
-	"github.com/spf13/afero"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type RegCommand struct {
 	Email    string
 	AgreeTOS string
+
+	Client *agent.Client
+	Store  *agent.Store
 }
 
-func (c *RegCommand) Run(ctx *kingpin.ParseContext) error {
-	store, err := agent.NewStore(c.Email, new(afero.OsFs))
-	if err != nil {
-		return err
-	}
-
+func (c *RegCommand) Run() error {
 	var publicKey jwk.Key
-	if key, err := store.LoadPublicKey(); err != nil && os.IsNotExist(err) {
+	if key, err := c.Store.LoadPublicKey(); err != nil && err == agent.ErrFileNotFound {
 		log.Println("INFO: account key pair is not found. Creating new account key pair...")
 
 		privkey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -38,7 +33,7 @@ func (c *RegCommand) Run(ctx *kingpin.ParseContext) error {
 			return err
 		}
 
-		if err := store.SaveKey(privateKey); err != nil {
+		if err := c.Store.SaveKey(privateKey); err != nil {
 			return err
 		}
 
@@ -54,22 +49,17 @@ func (c *RegCommand) Run(ctx *kingpin.ParseContext) error {
 		log.Println("INFO: account key pair is found")
 	}
 
-	dirURL := agent.DefaultDirectoryURL
-	if url := os.Getenv("AAA_DIRECTORY_URL"); url != "" {
-		dirURL = url
-	}
-
-	client, err := agent.NewClient(dirURL, store)
-	if err != nil {
+	// initialize client here
+	if err := c.Client.Init(); err != nil {
 		return err
 	}
 
 	var account *agent.Account
 
 	// try to load account info
-	account, err = store.LoadAccount()
+	account, err := c.Store.LoadAccount()
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if err != agent.ErrFileNotFound {
 			return err
 		}
 
@@ -78,13 +68,13 @@ func (c *RegCommand) Run(ctx *kingpin.ParseContext) error {
 			Contact: []string{"mailto:" + c.Email},
 		}
 
-		acc, err := client.Register(newRegReq)
+		acc, err := c.Client.Register(newRegReq)
 		if err != nil {
 			return err
 		}
 
 		// save an account before we make agreement
-		if err := store.SaveAccount(acc); err != nil {
+		if err := c.Store.SaveAccount(acc); err != nil {
 			return err
 		}
 
@@ -103,12 +93,12 @@ func (c *RegCommand) Run(ctx *kingpin.ParseContext) error {
 		Key:       publicKey,
 	}
 
-	if err := client.UpdateRegistration(account.URL, updateRegReq); err != nil {
+	if err := c.Client.UpdateRegistration(account.URL, updateRegReq); err != nil {
 		return err
 	}
 
 	account.TOSAgreed = true
-	if err := store.SaveAccount(account); err != nil {
+	if err := c.Store.SaveAccount(account); err != nil {
 		return err
 	}
 

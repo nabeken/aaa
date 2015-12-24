@@ -4,31 +4,25 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"log"
-	"os"
 	"time"
 
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/nabeken/aaa/agent"
-	"github.com/spf13/afero"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type CertCommand struct {
-	Email      string
 	CommonName string
 	Domains    []string
 	Renewal    bool
+
+	Client *agent.Client
+	Store  *agent.Store
 }
 
-func (c *CertCommand) Run(ctx *kingpin.ParseContext) error {
-	store, err := agent.NewStore(c.Email, new(afero.OsFs))
-	if err != nil {
-		return err
-	}
-
+func (c *CertCommand) Run() error {
 	// Loading certificate unless we set Renewal flag
 	if !c.Renewal {
-		if cert, err := store.LoadCert(c.CommonName); err != nil && !os.IsNotExist(err) {
+		if cert, err := c.Store.LoadCert(c.CommonName); err != nil && err != agent.ErrFileNotFound {
 			// something is wrong
 			return err
 		} else if err == nil {
@@ -45,16 +39,6 @@ func (c *CertCommand) Run(ctx *kingpin.ParseContext) error {
 
 	log.Print("INFO: now issuing certificate...")
 
-	dirURL := agent.DefaultDirectoryURL
-	if url := os.Getenv("AAA_DIRECTORY_URL"); url != "" {
-		dirURL = url
-	}
-
-	client, err := agent.NewClient(dirURL, store)
-	if err != nil {
-		return err
-	}
-
 	// Creating private key for cert
 	certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -67,7 +51,7 @@ func (c *CertCommand) Run(ctx *kingpin.ParseContext) error {
 	}
 
 	// storing private key for certificate
-	if err := store.SaveCertKey(c.CommonName, certPrivkeyJWK); err != nil {
+	if err := c.Store.SaveCertKey(c.CommonName, certPrivkeyJWK); err != nil {
 		return err
 	}
 
@@ -78,19 +62,19 @@ func (c *CertCommand) Run(ctx *kingpin.ParseContext) error {
 	}
 
 	// Issue new-cert request
-	certURL, err := client.NewCertificate(der)
+	certURL, err := c.Client.NewCertificate(der)
 	if err != nil {
 		return err
 	}
 
 	log.Printf("INFO: certificate will be available at %s", certURL)
 
-	cert, err := client.GetCertificate(certURL)
+	cert, err := c.Client.GetCertificate(certURL)
 	if err != nil {
 		return err
 	}
 
-	if err := store.SaveCert(c.CommonName, cert); err != nil {
+	if err := c.Store.SaveCert(c.CommonName, cert); err != nil {
 		return err
 	}
 

@@ -1,17 +1,17 @@
 package agent
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
+	"strconv"
 
 	"github.com/lestrrat/go-jwx/jwk"
-	"github.com/spf13/afero"
 )
 
 /*
@@ -30,31 +30,24 @@ Per Store instance:
 */
 
 type Store struct {
-	email string
-	fs    afero.Fs
-
-	prefix string // FIXME: should be configurable
+	email  string
+	filer  Filer
+	prefix string
 }
 
-// NewStore initialize fs. It makes directory named email.
-func NewStore(email string, fs afero.Fs) (*Store, error) {
+func NewStore(email string, filer Filer) (*Store, error) {
 	if email == "" {
 		return nil, errors.New("aaa: email must not be empty")
 	}
 
-	s := &Store{
-		email:  email,
-		fs:     fs,
-		prefix: "aaa-agent",
+	if debug, _ := strconv.ParseBool(os.Getenv("AAA_DEBUG")); debug {
+		filer = new(OSFiler)
 	}
 
-	for _, dir := range []string{
-		s.joinPrefix("info"),
-		s.joinPrefix("domain"),
-	} {
-		if err := s.fs.MkdirAll(dir, 0700); err != nil {
-			return nil, err
-		}
+	s := &Store{
+		email:  email,
+		filer:  filer,
+		prefix: "aaa-data",
 	}
 
 	return s, nil
@@ -62,12 +55,7 @@ func NewStore(email string, fs afero.Fs) (*Store, error) {
 
 // LoadKey returns RSA private key in JWK.
 func (s *Store) LoadPrivateKey() (jwk.Key, error) {
-	f, err := s.fs.Open(s.joinPrefix("info", s.email+".jwk"))
-	if err != nil {
-		return nil, err
-	}
-
-	blob, err := ioutil.ReadAll(f)
+	blob, err := s.filer.ReadFile(s.joinPrefix("info", s.email+".jwk"))
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +98,7 @@ func (s *Store) SaveKey(privateKey jwk.Key) error {
 		return err
 	}
 
-	return afero.WriteFile(s.fs, s.joinPrefix("info", s.email+".jwk"), blob, 0600)
+	return s.filer.WriteFile(s.joinPrefix("info", s.email+".jwk"), blob)
 }
 
 func (s *Store) SaveCertKey(domain string, privateKey jwk.Key) error {
@@ -119,21 +107,11 @@ func (s *Store) SaveCertKey(domain string, privateKey jwk.Key) error {
 		return err
 	}
 
-	if err := s.mkDomainDir(domain); err != nil {
-		return err
-	}
-
-	return afero.WriteFile(s.fs, s.joinPrefix("domain", domain, "privkey.jwk"), blob, 0600)
+	return s.filer.WriteFile(s.joinPrefix("domain", domain, "privkey.jwk"), blob)
 }
 
 func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {
-	f, err := s.fs.Open(s.joinPrefix("domain", domain, "cert.pem"))
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	blob, err := ioutil.ReadAll(f)
+	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "cert.pem"))
 	if err != nil {
 		return nil, err
 	}
@@ -143,35 +121,22 @@ func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {
 }
 
 func (s *Store) SaveCert(domain string, cert *x509.Certificate) error {
-	if err := s.mkDomainDir(domain); err != nil {
+	buf := new(bytes.Buffer)
+	if err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
 		return err
 	}
 
-	f, err := s.fs.OpenFile(
-		s.joinPrefix("domain", domain, "cert.pem"),
-		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
-		0600,
-	)
-	if err != nil {
-		return err
-	}
-
-	return pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	return s.filer.WriteFile(s.joinPrefix("domain", domain, "cert.pem"), buf.Bytes())
 }
 
 func (s *Store) LoadAuthorization(domain string) (*Authorization, error) {
-	if err := s.mkDomainDir(domain); err != nil {
-		return nil, err
-	}
-
-	f, err := s.fs.Open(s.joinPrefix("domain", domain, "authz.json"))
+	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "authz.json"))
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
 	authz := &Authorization{}
-	if err := json.NewDecoder(f).Decode(authz); err != nil {
+	if err := json.Unmarshal(blob, authz); err != nil {
 		return nil, err
 	}
 
@@ -185,17 +150,7 @@ func (s *Store) SaveAuthorization(authz *Authorization) error {
 	}
 
 	domain := authz.Identifier.Value
-
-	if err := s.mkDomainDir(domain); err != nil {
-		return err
-	}
-
-	return afero.WriteFile(
-		s.fs,
-		s.joinPrefix("domain", domain, "authz.json"),
-		blob,
-		0600,
-	)
+	return s.filer.WriteFile(s.joinPrefix("domain", domain, "authz.json"), blob)
 }
 
 func (s *Store) SaveAccount(account *Account) error {
@@ -204,40 +159,23 @@ func (s *Store) SaveAccount(account *Account) error {
 		return err
 	}
 
-	return afero.WriteFile(s.fs, s.joinPrefix("info", s.email+".json"), blob, 0600)
+	return s.filer.WriteFile(s.joinPrefix("info", s.email+".json"), blob)
 }
 
 func (s *Store) LoadAccount() (*Account, error) {
-	f, err := s.fs.Open(s.joinPrefix("info", s.email+".json"))
+	blob, err := s.filer.ReadFile(s.joinPrefix("info", s.email+".json"))
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
 	account := &Account{}
-	if err := json.NewDecoder(f).Decode(account); err != nil {
+	if err := json.Unmarshal(blob, account); err != nil {
 		return nil, err
 	}
 
 	return account, nil
 }
 
-func (s *Store) mkDomainDir(domain string) error {
-	return s.fs.MkdirAll(s.joinPrefix("domain", domain), 0700)
-}
-
 func (s *Store) joinPrefix(fns ...string) string {
-	return joinPrefix(append([]string{s.prefix, s.email}, fns...)...)
-}
-
-func joinPrefix(fns ...string) string {
-	var path string
-	if len(fns) > 0 {
-		path = fns[0]
-		fns = fns[1:]
-	}
-	for _, fn := range fns {
-		path += afero.FilePathSeparator + fn
-	}
-	return path
+	return s.filer.Join(append([]string{s.prefix, s.email}, fns...)...)
 }
