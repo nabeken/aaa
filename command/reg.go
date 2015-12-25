@@ -44,6 +44,8 @@ func (c *RegCommand) Run() error {
 
 		publicKey = key
 		log.Println("INFO: new account key pair has been created")
+	} else if err != nil {
+		return err
 	} else {
 		publicKey = key
 		log.Println("INFO: account key pair is found")
