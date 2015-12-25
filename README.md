@@ -14,7 +14,7 @@ This design allows us to run ACME agent in stateless.
 - :heavy_check_mark: Create CSR with [SAN (Subject Alternative Name)](https://en.wikipedia.org/wiki/SubjectAltName)
 - :heavy_check_mark: Issue certificates
 - :heavy_check_mark: Store data on S3 with SSE-KMS
-- :construction: Configuration by TOML
+- :construction: Renewal management
 - :construction: AWS Lambda build
 
 ## Installation
