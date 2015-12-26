@@ -34,3 +34,10 @@ func InstallCertCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.
 
 	return cert, cmd
 }
+
+func InstallLsCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.LsCommand) {
+	cmd := &command.LsCommand{}
+	ls := app.Command("ls", "List.")
+
+	return ls, cmd
+}
