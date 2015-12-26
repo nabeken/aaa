@@ -24,6 +24,7 @@ type Filer interface {
 	WriteFile(string, []byte) error
 	ReadFile(string) ([]byte, error)
 	Join(elem ...string) string
+	ListDir(string) ([]string, error)
 }
 
 // OSFiler implements Filer interface backed by *os.File.
@@ -50,6 +51,17 @@ func (f *OSFiler) ReadFile(filename string) ([]byte, error) {
 		return nil, err
 	}
 	return data, err
+}
+
+// ListDir returns directories that has the given prefix.
+// See https://golang.org/pkg/os/#File.Readdirnames (n <= 0)
+func (f *OSFiler) ListDir(prefix string) ([]string, error) {
+	fi, err := os.Open(f.Join(f.BaseDir, prefix))
+	if err != nil {
+		return nil, err
+	}
+
+	return fi.Readdirnames(-1)
 }
 
 func (s *OSFiler) Join(elem ...string) string {
@@ -91,6 +103,10 @@ func (s *S3Filer) ReadFile(key string) ([]byte, error) {
 	}
 	defer object.Body.Close()
 	return ioutil.ReadAll(object.Body)
+}
+
+func (s *S3Filer) ListDir(prefix string) ([]string, error) {
+	return nil, nil
 }
 
 func (s *S3Filer) Join(elem ...string) string {
