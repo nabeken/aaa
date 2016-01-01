@@ -88,7 +88,7 @@ aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --agree
 
 ## Authorization
 
-`aaa` implements 3 types of solver for challenges: `http-01`, `s3-http-01` and `dns-01`.
+`aaa` implements the solvers for the following challenges:
 
 - s3-http-01: This is a workaround until `dns-01` is properly landed on Let's Encrypt's side.
 - dns-01: This will be our main method to automate things but it does not work due to LE's bad.
