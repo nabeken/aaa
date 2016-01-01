@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -15,8 +14,8 @@ import (
 )
 
 type AuthzCommand struct {
-	S3Config  *S3Config
-	Email     string
+	S3Config *S3Config
+	Email    string
 
 	Domain    string
 	Challenge string
@@ -75,18 +74,6 @@ func (c *AuthzCommand) Run() error {
 	var challengeSolver agent.ChallengeSolver
 
 	switch c.Challenge {
-	case "http-01":
-		httpPort := agent.DefaultHTTPPort
-		if port := os.Getenv("AAA_HTTP_PORT"); port != "" {
-			httpPort = port
-		}
-		httpChallenge, found := agent.FindHTTPChallenge(authzResp)
-		if !found {
-			return errors.New("aaa: no HTTP challenge and its combination found")
-		}
-		challenge = httpChallenge
-		challengeSolver = agent.NewHTTPChallengeSolver(httpChallenge, c.Domain, httpPort)
-
 	case "s3-http-01":
 		httpChallenge, found := agent.FindHTTPChallenge(authzResp)
 		if !found {
