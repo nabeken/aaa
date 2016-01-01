@@ -2,7 +2,7 @@
 
 AAA is an [ACME](https://tools.ietf.org/html/draft-ietf-acme-acme-01) Agent for AWS environment.
 All information is stored on [S3 with SSE-KMS](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html).
-This design allows us to run ACME agent in stateless.
+This design allows us to run ACME agent in stateless (e.g. AWS Lambda).
 
 ## Current Status: alpha
 
@@ -14,7 +14,7 @@ This design allows us to run ACME agent in stateless.
 - :heavy_check_mark: Create CSR with [SAN (Subject Alternative Name)](https://en.wikipedia.org/wiki/SubjectAltName)
 - :heavy_check_mark: Issue certificates
 - :heavy_check_mark: Store data on S3 with SSE-KMS
-- :construction: Renewal management
+- :heavy_check_mark: Renewal management by utilizing S3
 - :construction: AWS Lambda build
 
 ## Installation
@@ -29,10 +29,10 @@ go get -u github.com/nabeken/aaa
 
 `AAA` requires:
 
-- A dedicated S3 bucket
-  - `/.well-known/*` will be used to answer http-01 challenge so under this prefix will be public
-  - `/aaa-data/*` will be used for all generated secrets and certificates so under this prefix MUST be encrypted
-- KMS Encryption Key for encrypting all data in the S3 bucket
+- AWS KMS Encryption Key for encrypting all data in the S3 bucket
+- A dedicated S3 bucket that holds
+  - `/.well-known/*`: will be used to answer http-01 challenge so under this prefix will be public
+  - `/aaa-data/*`: will be used for all generated secrets and certificates so under this prefix MUST be encrypted
 
 To protect you from uploading data without encryption, I highly recommend you to add a bucket policy like this:
 
@@ -69,8 +69,6 @@ Finally, you are able to request ACME server to issue your certificates.
 In default, ACME API endpoint in `aaa` points to LE's staging environment.
 After you grasp how `aaa` works, you can point the endpoint to LE's production environment.
 
-All information is currently stored at `aaa-agent` directory on the current working directory.
-
 ```sh
 export AAA_DIRECTORY_URL=https://acme-v01.api.letsencrypt.org/directory
 ```
@@ -92,7 +90,6 @@ aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --agree
 
 `aaa` implements 3 types of solver for challenges: `http-01`, `s3-http-01` and `dns-01`.
 
-- http-01: This is for debugging. Do not use unless you know what this is.
 - s3-http-01: This is a workaround until `dns-01` is properly landed on Let's Encrypt's side.
 - dns-01: This will be our main method to automate things but it does not work due to LE's bad.
 
@@ -146,6 +143,65 @@ Let's issue a certifiate for two domains `le-test-0[12].example.com`. If you don
 ```
 aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --common-name le-test-01.example.com --domain le-test-02.example.com
 ```
+
+### Listing all information
+
+To show all accounts and certificates, you can use `ls` subcommand like this:
+
+```sh
+aaa ls --s3-bucket dbee --s3-kms-key 0effb7da-3d47-4113-90eb-945c1d0cf570 | jq -r .
+{
+  "accounts": [
+    {
+      "email": "letest-stag-2@example.com",
+      "domains": [
+        {
+          "domain": "le-test-http-01.example.com",
+          "authorization": {
+            "expires": "2016-10-27T04:16:59Z"
+          },
+          "certificate": {
+            "not_before": "2016-01-01T03:18:00Z",
+            "not_after": "2016-03-31T03:18:00Z"
+          }
+        },
+        {
+          "domain": "le-test-http-02.example.com",
+          "authorization": {
+            "expires": "2016-10-27T04:20:45Z"
+          },
+          "certificate": {
+            "not_before": "2016-01-01T03:21:00Z",
+            "not_after": "2016-03-31T03:21:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "email": "letest-stag@example.com",
+      "domains": [
+        {
+          "domain": "le-test-http-01.example.com",
+          "authorization": {
+            "expires": "2016-10-27T03:11:11Z"
+          },
+          "certificate": {
+            "not_before": "2016-01-01T02:13:00Z",
+            "not_after": "2016-03-31T02:13:00Z"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+Please note that information is encoded in JSON. This information will be used for certificate renewal management and
+it allows another processes to comsume the info easily.
+
+### Reneal management
+
+TBD
 
 ## Integrated libraries
 
