@@ -199,7 +199,7 @@ aaa ls --s3-bucket dbee --s3-kms-key 0effb7da-3d47-4113-90eb-945c1d0cf570 | jq -
 Please note that information is encoded in JSON. This information will be used for certificate renewal management and
 it allows another processes to comsume the info easily.
 
-### Reneal management
+### Renewal management
 
 TBD
 
