@@ -9,22 +9,30 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aws-go-s3/bucket"
 )
 
 type AuthzCommand struct {
+	S3Config  *S3Config
+	Email     string
+
 	Domain    string
 	Challenge string
-
-	Client *agent.Client
-	Store  *agent.Store
-	Bucket *bucket.Bucket
 }
 
 func (c *AuthzCommand) Run() error {
+	// initialize S3 bucket and filer
+	s3b := bucket.New(s3.New(session.New()), c.S3Config.Bucket)
+	filer := agent.NewS3Filer(s3b, c.S3Config.KMSKeyID)
+	store, err := agent.NewStore(c.Email, filer)
+	if err != nil {
+		return err
+	}
+
 	// If we have authorized domain, we skip authorization request.
-	if authz, err := c.Store.LoadAuthorization(c.Domain); err != nil && err != agent.ErrFileNotFound {
+	if authz, err := store.LoadAuthorization(c.Domain); err != nil && err != agent.ErrFileNotFound {
 		// something is wrong
 		return err
 	} else if err == nil {
@@ -48,7 +56,13 @@ func (c *AuthzCommand) Run() error {
 		},
 	}
 
-	authzResp, err := c.Client.NewAuthorization(newAuthzReq)
+	// initialize client here
+	client := agent.NewClient(DirectoryURL(), store)
+	if err := client.Init(); err != nil {
+		return err
+	}
+
+	authzResp, err := client.NewAuthorization(newAuthzReq)
 	if err != nil {
 		return err
 	}
@@ -80,7 +94,7 @@ func (c *AuthzCommand) Run() error {
 		}
 
 		challenge = httpChallenge
-		challengeSolver = agent.NewS3HTTPChallengeSolver(c.Bucket, httpChallenge, c.Domain)
+		challengeSolver = agent.NewS3HTTPChallengeSolver(s3b, httpChallenge, c.Domain)
 
 	case "dns-01":
 		dnsChallenge, found := agent.FindDNSChallenge(authzResp)
@@ -95,7 +109,7 @@ func (c *AuthzCommand) Run() error {
 		return fmt.Errorf("aaa: challenge %s is not supported")
 	}
 
-	publicKey, err := c.Store.LoadPublicKey()
+	publicKey, err := store.LoadPublicKey()
 	if err != nil {
 		return err
 	}
@@ -111,11 +125,11 @@ func (c *AuthzCommand) Run() error {
 		return err
 	}
 
-	if err := c.Client.SolveChallenge(challenge, keyAuthz); err != nil {
+	if err := client.SolveChallenge(challenge, keyAuthz); err != nil {
 		return err
 	}
 
-	if err := c.Client.WaitChallengeDone(challenge); err != nil {
+	if err := client.WaitChallengeDone(challenge); err != nil {
 		log.Print("INFO: challenge has been failed")
 		return err
 	}
@@ -125,12 +139,12 @@ func (c *AuthzCommand) Run() error {
 	}
 
 	// getting the latest authorization status
-	currentAuthz, err := c.Client.GetAuthorization(authzResp.URL)
+	currentAuthz, err := client.GetAuthorization(authzResp.URL)
 	if err != nil {
 		return err
 	}
 
-	if err := c.Store.SaveAuthorization(currentAuthz); err != nil {
+	if err := store.SaveAuthorization(currentAuthz); err != nil {
 		return err
 	}
 

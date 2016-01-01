@@ -11,16 +11,21 @@ import (
 )
 
 type RegCommand struct {
+	S3Config *S3Config
+
 	Email    string
 	AgreeTOS string
-
-	Client *agent.Client
-	Store  *agent.Store
 }
 
 func (c *RegCommand) Run() error {
+	// initialize S3 bucket and filer
+	store, err := newStore(c.Email, c.S3Config)
+	if err != nil {
+		return err
+	}
+
 	var publicKey jwk.Key
-	if key, err := c.Store.LoadPublicKey(); err != nil && err == agent.ErrFileNotFound {
+	if key, err := store.LoadPublicKey(); err != nil && err == agent.ErrFileNotFound {
 		log.Println("INFO: account key pair is not found. Creating new account key pair...")
 
 		privkey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -33,7 +38,7 @@ func (c *RegCommand) Run() error {
 			return err
 		}
 
-		if err := c.Store.SaveKey(privateKey); err != nil {
+		if err := store.SaveKey(privateKey); err != nil {
 			return err
 		}
 
@@ -52,14 +57,15 @@ func (c *RegCommand) Run() error {
 	}
 
 	// initialize client here
-	if err := c.Client.Init(); err != nil {
+	client := agent.NewClient(DirectoryURL(), store)
+	if err := client.Init(); err != nil {
 		return err
 	}
 
 	var account *agent.Account
 
 	// try to load account info
-	account, err := c.Store.LoadAccount()
+	account, err = store.LoadAccount()
 	if err != nil {
 		if err != agent.ErrFileNotFound {
 			return err
@@ -70,13 +76,13 @@ func (c *RegCommand) Run() error {
 			Contact: []string{"mailto:" + c.Email},
 		}
 
-		acc, err := c.Client.Register(newRegReq)
+		acc, err := client.Register(newRegReq)
 		if err != nil {
 			return err
 		}
 
 		// save an account before we make agreement
-		if err := c.Store.SaveAccount(acc); err != nil {
+		if err := store.SaveAccount(acc); err != nil {
 			return err
 		}
 
@@ -95,12 +101,12 @@ func (c *RegCommand) Run() error {
 		Key:       publicKey,
 	}
 
-	if err := c.Client.UpdateRegistration(account.URL, updateRegReq); err != nil {
+	if err := client.UpdateRegistration(account.URL, updateRegReq); err != nil {
 		return err
 	}
 
 	account.TOSAgreed = true
-	if err := c.Store.SaveAccount(account); err != nil {
+	if err := store.SaveAccount(account); err != nil {
 		return err
 	}
 

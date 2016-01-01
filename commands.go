@@ -31,6 +31,15 @@ func InstallCertCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.
 		StringsVar(&cmd.Domains)
 
 	cert.Flag("renewal", "Renew the certificate").BoolVar(&cmd.Renewal)
+	cert.Flag("renewal-key", "Renew the key").BoolVar(&cmd.RenewalKey)
 
 	return cert, cmd
+}
+
+func InstallLsCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.LsCommand) {
+	cmd := &command.LsCommand{}
+	ls := app.Command("ls", "List.")
+	ls.Flag("format", "Format the output").Default("json").StringVar(&cmd.Format)
+
+	return ls, cmd
 }

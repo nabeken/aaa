@@ -14,6 +14,8 @@ import (
 	"github.com/lestrrat/go-jwx/jwk"
 )
 
+var StorePrefix = "aaa-data"
+
 /*
 prefix: {{letsencrypt-base}}/aaa-agent/
 
@@ -47,7 +49,7 @@ func NewStore(email string, filer Filer) (*Store, error) {
 	s := &Store{
 		email:  email,
 		filer:  filer,
-		prefix: "aaa-data",
+		prefix: StorePrefix,
 	}
 
 	return s, nil
@@ -110,6 +112,23 @@ func (s *Store) SaveCertKey(domain string, privateKey jwk.Key) error {
 	return s.filer.WriteFile(s.joinPrefix("domain", domain, "privkey.jwk"), blob)
 }
 
+func (s *Store) LoadCertKey(domain string) (jwk.Key, error) {
+	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "privkey.jwk"))
+	if err != nil {
+		return nil, err
+	}
+
+	keyset, err := jwk.Parse(blob)
+	if err != nil {
+		return nil, err
+	}
+	if len(keyset.Keys) == 0 {
+		return nil, errors.New("aaa: no key found")
+	}
+
+	return keyset.Keys[0], nil
+}
+
 func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {
 	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "cert.pem"))
 	if err != nil {
@@ -151,6 +170,24 @@ func (s *Store) SaveAuthorization(authz *Authorization) error {
 
 	domain := authz.Identifier.Value
 	return s.filer.WriteFile(s.joinPrefix("domain", domain, "authz.json"), blob)
+}
+
+func (s *Store) ListDomains() ([]string, error) {
+	dirs, err := s.filer.ListDir(s.joinPrefix("domain"))
+	if err != nil {
+		return nil, err
+	}
+
+	domains := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		elem := s.filer.Split(dir)
+
+		// domain is in 4th element
+		if len(elem) > 3 {
+			domains = append(domains, elem[3])
+		}
+	}
+	return domains, nil
 }
 
 func (s *Store) SaveAccount(account *Account) error {

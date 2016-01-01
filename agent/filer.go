@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/nabeken/aws-go-s3/bucket"
 	"github.com/nabeken/aws-go-s3/bucket/option"
@@ -24,6 +25,8 @@ type Filer interface {
 	WriteFile(string, []byte) error
 	ReadFile(string) ([]byte, error)
 	Join(elem ...string) string
+	Split(elem string) []string
+	ListDir(string) ([]string, error)
 }
 
 // OSFiler implements Filer interface backed by *os.File.
@@ -52,8 +55,23 @@ func (f *OSFiler) ReadFile(filename string) ([]byte, error) {
 	return data, err
 }
 
+// ListDir returns directories that has the given prefix.
+// See https://golang.org/pkg/os/#File.Readdirnames (n <= 0)
+func (f *OSFiler) ListDir(prefix string) ([]string, error) {
+	fi, err := os.Open(f.Join(f.BaseDir, prefix))
+	if err != nil {
+		return nil, err
+	}
+
+	return fi.Readdirnames(-1)
+}
+
 func (s *OSFiler) Join(elem ...string) string {
 	return filepath.Join(elem...)
+}
+
+func (s *OSFiler) Split(path string) []string {
+	return strings.Split(path, string(os.PathSeparator))
 }
 
 type S3Filer struct {
@@ -93,6 +111,33 @@ func (s *S3Filer) ReadFile(key string) ([]byte, error) {
 	return ioutil.ReadAll(object.Body)
 }
 
+func (s *S3Filer) ListDir(prefix string) ([]string, error) {
+	resp, err := s.bucket.ListObjects(
+		prefix+"/",
+		option.ListDelimiter("/"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dirs := make([]string, len(resp.CommonPrefixes))
+	for i, v := range resp.CommonPrefixes {
+		dir := aws.StringValue(v.Prefix)
+
+		// removing trailing '/'
+		if dir[len(dir)-1] == '/' {
+			dir = dir[:len(dir)-1]
+		}
+		dirs[i] = dir
+	}
+
+	return dirs, nil
+}
+
 func (s *S3Filer) Join(elem ...string) string {
 	return strings.Join(elem, "/")
+}
+
+func (s *S3Filer) Split(prefix string) []string {
+	return strings.Split(prefix, "/")
 }
