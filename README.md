@@ -149,7 +149,7 @@ aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --comm
 To show all accounts and certificates, you can use `ls` subcommand like this:
 
 ```sh
-aaa ls --s3-bucket dbee --s3-kms-key 0effb7da-3d47-4113-90eb-945c1d0cf570 | jq -r .
+aaa ls --s3-bucket YourBucket --s3-kms-key xxxx | jq -r .
 {
   "accounts": [
     {
