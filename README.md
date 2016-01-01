@@ -197,7 +197,7 @@ aaa ls --s3-bucket YourBucket --s3-kms-key xxxx | jq -r .
 ```
 
 Please note that information is encoded in JSON. This information will be used for certificate renewal management and
-it allows another processes to comsume the info easily.
+it allows another processes to consume the info easily.
 
 ## Renewal management
 
