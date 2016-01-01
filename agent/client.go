@@ -95,9 +95,15 @@ type Authorization struct {
 
 // IsExpired returns true if authorization is expired.
 func (a *Authorization) IsExpired(now time.Time) bool {
-	expires, _ := time.Parse(time.RFC3339, a.Expires)
 	// If we fails to parse the time, it will be compaired with zero time.
-	return expires.Before(now)
+	return a.GetExpires().Before(now)
+}
+
+// GetExpires returns Expires in time.Time by parsing strings.
+// If it fails to parse, zero value of time.Time will be returned.
+func (a *Authorization) GetExpires() time.Time {
+	expires, _ := time.Parse(time.RFC3339, a.Expires)
+	return expires
 }
 
 type Identifier struct {
