@@ -3,6 +3,7 @@ package command
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"fmt"
 	"log"
 	"time"
 
@@ -17,6 +18,7 @@ type CertCommand struct {
 	CommonName string
 	Domains    []string
 	Renewal    bool
+	RenewalKey bool
 }
 
 func (c *CertCommand) Run() error {
@@ -44,24 +46,50 @@ func (c *CertCommand) Run() error {
 
 	log.Print("INFO: now issuing certificate...")
 
+	var privateKey *rsa.PrivateKey
+
 	// Creating private key for cert
-	certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		return err
-	}
+	// when it is not renewal or RenewalKey is specified
+	if !c.Renewal || c.RenewalKey {
+		log.Print("INFO: creating new private key...")
+		certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
+		if err != nil {
+			return err
+		}
 
-	certPrivkeyJWK, err := jwk.NewRsaPrivateKey(certPrivkey)
-	if err != nil {
-		return err
-	}
+		certPrivkeyJWK, err := jwk.NewRsaPrivateKey(certPrivkey)
+		if err != nil {
+			return err
+		}
 
-	// storing private key for certificate
-	if err := store.SaveCertKey(c.CommonName, certPrivkeyJWK); err != nil {
-		return err
+		// storing private key for certificate
+		if err := store.SaveCertKey(c.CommonName, certPrivkeyJWK); err != nil {
+			return err
+		}
+
+		privateKey = certPrivkey
+	} else {
+		log.Print("INFO: loading existing private key...")
+		key, err := store.LoadCertKey(c.CommonName)
+		if err != nil {
+			return err
+		}
+
+		pkey, err := key.Materialize()
+		if err != nil {
+			return err
+		}
+
+		rsaPrivKey, ok := pkey.(*rsa.PrivateKey)
+		if !ok {
+			return fmt.Errorf("aaa: key is not *rsa.PrivateKey but %v", pkey)
+		}
+
+		privateKey = rsaPrivKey
 	}
 
 	// Creating CSR
-	der, err := agent.CreateCertificateRequest(certPrivkey, c.CommonName, c.Domains...)
+	der, err := agent.CreateCertificateRequest(privateKey, c.CommonName, c.Domains...)
 	if err != nil {
 		return err
 	}
