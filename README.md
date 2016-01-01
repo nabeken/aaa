@@ -144,7 +144,7 @@ Let's issue a certifiate for two domains `le-test-0[12].example.com`. If you don
 aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --common-name le-test-01.example.com --domain le-test-02.example.com
 ```
 
-### Listing all information
+## Listing all information
 
 To show all accounts and certificates, you can use `ls` subcommand like this:
 
@@ -199,7 +199,7 @@ aaa ls --s3-bucket dbee --s3-kms-key 0effb7da-3d47-4113-90eb-945c1d0cf570 | jq -
 Please note that information is encoded in JSON. This information will be used for certificate renewal management and
 it allows another processes to comsume the info easily.
 
-### Renewal management
+## Renewal management
 
 TBD
 
