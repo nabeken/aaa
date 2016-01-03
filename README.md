@@ -327,9 +327,9 @@ We really don't care about how resources are located but we need a resource that
     - http://qiita.com/satetsu888/items/40fc387735192b794da8 (in Japanese)
     - https://forums.aws.amazon.com/thread.jspa?messageID=673012&tstart=0#673012
 
-Then, deploy API. You will get the invoke URL for the resource.
+Then, deploy API. You will get a invoke URL for the resource.
 
-### Update the Slash to fill the endpoint URL
+### Update the Slash Command to fill the endpoint URL
 
 Finally, you can fill the URL in `Integration Settings`.
 
