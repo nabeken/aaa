@@ -219,7 +219,7 @@ Steps: (assumes that you have already the KMS key and the S3 bucket)
 
 1. Create a Slash Command `/letsencrypt` in Slack but let the endpoint URL empty
 2. Create a configuration `aaa_lambda.toml`
-3. Build `lambda.zip` to bundle Lambda Function
+3. Build `lambda.zip` to bundle two Lambda Functions
 4. Create two Lambda Functions `aaa-dispatcher` and `aaa-executor`
 5. Create a API Gateway `aaa-dispatcher-gateway`
 6. Update the Slash Command to fill the endpoint URL that points to the `aaa-dispatcher-gateway`
@@ -338,6 +338,21 @@ Finally, you can fill the URL in `Integration Settings`.
 We do automatic certificates renewal by Lambda Function `aaa-schedular` with scheduled events.
 
 TBD
+
+## Certificate distribution
+
+TBD
+
+1. Create an R/O IAM role/user for a specific prefix like `/aaa-data/foobar@example.com/domain/le-test.example.com`
+2. Do `aws s3 sync` with the prefix periodically
+3. Profit!
+
+Or
+
+1. Create an R/O IAM role/user for a specific prefix like `/aaa-data/foobar@example.com/domain/le-test.example.com`
+2. When automatic renewal process puts new certificate on S3, S3 notifications will be generated
+3. Respond with the notification with Lambda Function and update the certificate
+4. Profit!
 
 ## Integrated libraries
 
