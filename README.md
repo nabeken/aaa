@@ -16,6 +16,8 @@ This design allows us to run ACME agent in stateless (e.g. AWS Lambda).
 - :heavy_check_mark: Store data on S3 with SSE-KMS
 - :heavy_check_mark: Renewal management by utilizing S3
 - :construction: AWS Lambda build
+  - :heavy_check_mark: authz, cert
+  - :construction: automatic certificates renewal
 
 ## Installation
 
@@ -29,7 +31,7 @@ go get -u github.com/nabeken/aaa
 
 `AAA` requires:
 
-- AWS KMS Encryption Key for encrypting all data in the S3 bucket
+- AWS KMS Encryption Key for encrypting all data in the S3 bucket and token in the Lambda Function
 - A dedicated S3 bucket that holds
   - `/.well-known/*`: will be used to answer http-01 challenge so under this prefix will be public
   - `/aaa-data/*`: will be used for all generated secrets and certificates so under this prefix MUST be encrypted
@@ -203,6 +205,34 @@ it allows another processes to consume the info easily.
 
 TBD
 
+## Slack Integration with AWS Lambda
+
+We integrate `aaa` with Slack's [Slash Commands](https://api.slack.com/slash-commands). To do this, we need:
+
+- AWS API Gateway that invokes...
+- AWS Lambda Function `aaa-dispatcher` synchronously that invokes ...
+- AWS Lambda Function `aaa-executor` asynchronously that invokes `aaa` command-line application
+
+We should respond to Slash Commands within 3 seconds so we invoke `aaa-executor` asynchronously.
+
+Steps:
+
+1. Create a configuration `aaa_lambda.toml`
+2. Build `lambda.zip` to bundle Lambda Function
+3. Create two Lambda Functions `aaa-dispatcher` and `aaa-executor`
+4. Create a API Gateway `aaa-dispatcher-gateway`
+5. Create a Slash Command `/letsencrypt` in Slack
+
+Here we go!
+
+TBD
+
+## Automatic Renewal
+
+We do automatic certificates renewal by Lambda Function `aaa-schedular` with scheduled events.
+
+TBD
+
 ## Integrated libraries
 
 - [github.com/aws/aws-sdk-go](https://github.com/aws/aws-sdk-go)
@@ -215,4 +245,3 @@ TBD
 - Integrate [S3 Event Notifications](http://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html) ...
   - To automate the installation of certificates (e.g. ELB)
   - To manage renewal of certificates (e.g. Use DynamoDB as a database)
-- Integrate Let's encrypt with Slack (e.g. `@bot let's encrypt with api.example.com` and the certificate will be available on S3...)
