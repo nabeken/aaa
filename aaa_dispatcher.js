@@ -1,10 +1,7 @@
 /*
  * This is based on the blueprint `slack-echo-command' provided by AWS.
  */
-var AWS = require('aws-sdk'),
-    url = require('url'),
-    https = require('https'),
-    qs = require('querystring');
+var AWS = require('aws-sdk');
 
 require('toml-require').install();
 
