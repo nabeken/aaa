@@ -1,0 +1,8 @@
+[dispatcher]
+encrypted_slack_token = ""
+
+[executor]
+directory_url = "https://acme-staging.api.letsencrypt.org/directory"
+s3_bucket = ""
+kms_key = ""
+challenge = "s3-http-01"
