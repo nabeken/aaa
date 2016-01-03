@@ -5,9 +5,15 @@
 
 # aaa's data dir
 aaa-data/
+aaa_lambda.toml
 
 # Complied binary
 aaa
+main
+
+# lambda
+*.zip
+node_modules
 
 # Folders
 _obj
