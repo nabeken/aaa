@@ -141,7 +141,7 @@ aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --dom
 Let's issue a certifiate for two domains `le-test-0[12].example.com`. If you don't want to issue a certificate with SAN, just drop `--domain` argument.
 
 ```
-aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --common-name le-test-01.example.com --domain le-test-02.example.com
+aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --cn le-test-01.example.com --domain le-test-02.example.com
 ```
 
 ## Listing all information
