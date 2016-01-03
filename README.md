@@ -317,13 +317,13 @@ aws lambda create-function \
 
 Create an API named `aaa-dispatcher-gateway`.
 
-We really don't care about how resources are located but we need a resource that accepts `POST` method and some configuration for the resource:
+We really don't care about how resources are located but we need a resource that accepts `POST` method and some configurations for the resource:
 
 - Integration Request
   - ***Integration type***: Lambda Function
   - ***Lambda Region***: (Select your region)
   - ***Lambda Function***: `aaa-dispatcher`
-  - ***Mapping Templates***: Set `Content-Type: application/x-www-form-urlencoded` and create mapping tables that converts POST form reqeuest into JSON. You can find some examples on the Internet.
+  - ***Mapping Templates***: Set `Content-Type: application/x-www-form-urlencoded` and create mapping tables that converts POST form request into JSON. You can find some examples on the Internet.
     - http://qiita.com/satetsu888/items/40fc387735192b794da8 (in Japanese)
     - https://forums.aws.amazon.com/thread.jspa?messageID=673012&tstart=0#673012
 
