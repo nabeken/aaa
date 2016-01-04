@@ -201,11 +201,22 @@ aaa ls --s3-bucket YourBucket --s3-kms-key xxxx | jq -r .
 Please note that information is encoded in JSON. This information will be used for certificate renewal management and
 it allows another processes to consume the info easily.
 
-## Renewal management
+## Certificate renewal
 
-TBD
+If the authorization is still available, you can just issue the certificate again by passing `--renewal` flag.
+Otherwise, you need to begin with authorization by using `authz` subcommand. See the above.`Authorization` section.
 
-## Slack Integration with AWS Lambda
+```sh
+aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --renewal --cn le-test-01.example.com --domain le-test-02.example.com
+```
+
+If you want to regenerate the key, add `--renewal-key` flag too:
+
+```sh
+aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --renewal --renewal-key --cn le-test-01.example.com --domain le-test-02.example.com
+```
+
+## Slack integration with AWS Lambda
 
 We integrate `aaa` with Slack's [Slash Commands](https://api.slack.com/slash-commands). To do this, we need:
 
@@ -333,7 +344,7 @@ Then, deploy API. You will get a invoke URL for the resource.
 
 Finally, you can fill the URL in `Integration Settings`.
 
-## Automatic Renewal
+## Automatic renewal
 
 We do automatic certificates renewal by Lambda Function `aaa-schedular` with scheduled events.
 
