@@ -46,20 +46,16 @@ func (c *LsCommand) Run() error {
 	return nil
 }
 
-func (c *LsCommand) FetchData() (*aaadata, error) {
-	data := aaadata{}
+func (c *LsCommand) FetchData() ([]domain, error) {
+	data := []domain{}
 
-	accounts, err := c.ListAccounts()
+	emails, err := c.ListAccounts()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, a := range accounts {
-		acc := account{
-			Email: a,
-		}
-
-		store, err := agent.NewStore(a, c.filer)
+	for _, email := range emails {
+		store, err := agent.NewStore(email, c.filer)
 		if err != nil {
 			return nil, err
 		}
@@ -69,35 +65,35 @@ func (c *LsCommand) FetchData() (*aaadata, error) {
 			return nil, err
 		}
 
-		for _, d := range domains {
-			authz, err := store.LoadAuthorization(d)
+		for _, dom := range domains {
+			authz, err := store.LoadAuthorization(dom)
 			if err != nil {
-				log.Printf("failed to load authorization for %s: %s. skipping...", d, err)
+				log.Printf("failed to load authorization for %s: %s. skipping...", dom, err)
 				continue
 			}
 
-			cert, err := store.LoadCert(d)
+			cert, err := store.LoadCert(dom)
 			if err != nil {
-				log.Printf("failed to load certificate for %s: %s (or new-cert is ongoing). skipping...", d, err)
+				log.Printf("failed to load certificate for %s: %s (or new-cert is ongoing or this domain is in SAN in other certificates). skipping...", dom, err)
 				continue
 			}
 
-			acc.Domains = append(acc.Domains, domain{
-				Domain: d,
+			data = append(data, domain{
+				Email:  email,
+				Domain: dom,
 				Authorization: authorization{
 					Expires: authz.GetExpires(),
 				},
 				Certificate: certificate{
 					NotBefore: cert.NotBefore,
 					NotAfter:  cert.NotAfter,
+					SAN:       cert.DNSNames,
 				},
 			})
 		}
-
-		data.Accounts = append(data.Accounts, acc)
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 func (c *LsCommand) ListAccounts() ([]string, error) {
@@ -119,16 +115,8 @@ func (c *LsCommand) ListAccounts() ([]string, error) {
 	return accounts, nil
 }
 
-type aaadata struct {
-	Accounts []account `json:"accounts"`
-}
-
-type account struct {
-	Email   string   `json:"email"`
-	Domains []domain `json:"domains"`
-}
-
 type domain struct {
+	Email         string        `json:"email"`
 	Domain        string        `json:"domain"`
 	Authorization authorization `json:"authorization"`
 	Certificate   certificate   `json:"certificate"`
@@ -141,4 +129,5 @@ type authorization struct {
 type certificate struct {
 	NotBefore time.Time `json:"not_before"`
 	NotAfter  time.Time `json:"not_after"`
+	SAN       []string  `json:"san"`
 }
