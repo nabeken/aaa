@@ -276,6 +276,7 @@ Please create a IAM role `aaa-lambda`.
 It has the following managed policies:
 
 - `AmazonS3FullAccess`
+- `AmazonRoute53FullAccess`
 - `CloudWatchLogsFullAccesss`
 - `AWSLambdaRole`
 
