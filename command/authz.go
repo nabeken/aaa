@@ -19,6 +19,8 @@ type AuthzCommand struct {
 
 	Domain    string
 	Challenge string
+
+	Renewal bool
 }
 
 func (c *AuthzCommand) Run() error {
@@ -34,7 +36,7 @@ func (c *AuthzCommand) Run() error {
 	if authz, err := store.LoadAuthorization(c.Domain); err != nil && err != agent.ErrFileNotFound {
 		// something is wrong
 		return err
-	} else if err == nil {
+	} else if err == nil && !c.Renewal {
 		agent.Debug("previous authorization will be expired at ", authz.Expires)
 
 		if !authz.IsExpired(time.Now()) {

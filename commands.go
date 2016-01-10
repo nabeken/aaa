@@ -19,6 +19,7 @@ func InstallAuthzCommand(app *kingpin.Application) (*kingpin.CmdClause, *command
 	authz := app.Command("authz", "Authorize domain.")
 	authz.Flag("domain", "Domain to be authorized").Required().StringVar(&cmd.Domain)
 	authz.Flag("challenge", "Challenge Type").Default("http-01").StringVar(&cmd.Challenge)
+	authz.Flag("renewal", "Renew the authorization").BoolVar(&cmd.Renewal)
 
 	return authz, cmd
 }
