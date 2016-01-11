@@ -78,37 +78,27 @@ var process_event = function(event, context) {
     console.log('slack incoming webhook url: ' + slack_incoming_webhook_url);
     console.log('candidates: ' + JSON.stringify(candidates));
 
-    if (candidates.length === 0) {
-      post_slack('checking certificates renewal but no certificates found to be renewal')
-      .then(function(response) {
-        context.succeed('slack resp: ' + JSON.stringify(response));
-      })
-      .fail(function(response) {
-        context.fail(JSON.stringify(response));
+    // firing renewal event for each certificate
+    var promises = [];
+    candidates.forEach(function(candidate) {
+      var deferred = Q.defer();
+      console.log('invoking: ' + JSON.stringify(candidate));
+      lambda.invoke({
+        'FunctionName': executorFunctionName,
+        'InvocationType': 'Event',
+        'Payload': JSON.stringify(candidate),
+      }, function(error) {
+        if (error) {
+          console.log('failed to invoke executore: ' + error);
+          deferred.reject(error);
+        } else {
+          deferred.resolve();
+        }
       });
-    } else {
-      // firing renewal event for each certificate
-      var promises = [];
-      candidates.forEach(function(candidate) {
-        var deferred = Q.defer();
-        console.log('invoking: ' + JSON.stringify(candidate));
-        lambda.invoke({
-          'FunctionName': executorFunctionName,
-          'InvocationType': 'Event',
-          'Payload': JSON.stringify(candidate),
-        }, function(error) {
-          if (error) {
-            console.log('failed to invoke executore: ' + error);
-            deferred.reject(error);
-          } else {
-            deferred.resolve();
-          }
-        });
-        promises.push(deferred.promise);
-      });
+      promises.push(deferred.promise);
+    });
 
-      return Q.all(promises);
-    }
+    return Q.all(promises);
   })
   .then(function() {
     var text;
