@@ -349,7 +349,21 @@ Finally, you can fill the URL in `Integration Settings`.
 
 We do automatic certificates renewal by Lambda Function `aaa-schedular` with scheduled events.
 
-TBD
+Create a Lambda Function `aaa-schedular`:
+
+```sh
+aws lambda create-function \
+  --function-name aaa-schedular \
+  --description 'AAA Schedular for automatic certificate renewal' \
+  --runtime nodejs \
+  --role <IAM_ROLE_ARN> \
+  --handler aaa_schedular.handler \
+  --timeout 300 \
+  --zip-file fileb://lambda.zip
+```
+
+Currently, you can setup Scheduled Events only from AWS Management Console.
+Please add a scheduled event source to `aaa-Schedular`. 1 day is sufficient.
 
 ## Certificate distribution
 
