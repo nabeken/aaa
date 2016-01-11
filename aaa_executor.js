@@ -175,11 +175,11 @@ var build_slack_notification = function(message) {
       break;
     case 'cert':
       if (message.renewal) {
-      } else {
         return {
           'response_type': 'in_channel',
           'text': 'the certificates for ' + message.domains.join(', ') + ' now renewed!',
         };
+      } else {
         return {
           'response_type': 'in_channel',
           'text': '@' + message.event.user_name + ': the certificates for ' +
