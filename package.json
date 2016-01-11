@@ -5,6 +5,7 @@
   "dependencies": {
     "q": "~1.4",
     "request": "~2.67",
-    "toml-require": "~1.1"
+    "toml-require": "~1.1",
+    "moment": "~2.11.0"
   }
 }
