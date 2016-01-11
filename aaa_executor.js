@@ -160,22 +160,36 @@ var build_aaa_cmds = function(message) {
 var build_slack_notification = function(message) {
   switch (message.command) {
     case 'authz':
-      return {
-        'response_type': 'in_channel',
-        'text': '@' + message.event.user_name + ': the authorization has been done! ' +
-                'You are ready to issue the certificates.',
-      };
+      if (message.renewal) {
+        return {
+          'response_type': 'in_channel',
+          'text': 'the authorization for ' + message.domains + ' has been renewed.',
+        };
+      } else {
+        return {
+          'response_type': 'in_channel',
+          'text': '@' + message.event.user_name + ': the authorization has been done! ' +
+                  'You are ready to issue the certificates.',
+        };
+      }
       break;
     case 'cert':
-      return {
-        'response_type': 'in_channel',
-        'text': '@' + message.event.user_name + ': the certificates for ' +
-                message.domains.join(", ") + " now available!\n" +
-                "```\n" +
-                "aws s3 sync s3://" + config.executor.s3_bucket + '/aaa-data/' +
-                message.email + '/domain/' + message.domains[0] + " " + message.domains[0] +
-                "\n```",
-      };
+      if (message.renewal) {
+      } else {
+        return {
+          'response_type': 'in_channel',
+          'text': 'the certificates for ' + message.domains.join(', ') + ' now renewed!',
+        };
+        return {
+          'response_type': 'in_channel',
+          'text': '@' + message.event.user_name + ': the certificates for ' +
+                  message.domains.join(', ') + " now available!\n" +
+                  "```\n" +
+                  "aws s3 sync s3://" + config.executor.s3_bucket + '/aaa-data/' +
+                  message.email + '/domain/' + message.domains[0] + " " + message.domains[0] +
+                  "\n```",
+        };
+      }
       break;
   }
 };
@@ -183,7 +197,7 @@ var build_slack_notification = function(message) {
 var build_slack_error_notification = function(results, message) {
   return {
     'response_type': 'in_channel',
-    'text': '@' + message.event.user_name + ': `aaa` exits with non-zero code. Logs:' +
+    'text': '`aaa` exits with non-zero code. Logs:' +
             "```\n" +
             results +
             '```',
