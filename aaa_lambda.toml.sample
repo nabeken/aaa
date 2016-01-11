@@ -6,3 +6,8 @@ directory_url = "https://acme-staging.api.letsencrypt.org/directory"
 s3_bucket = ""
 kms_key = ""
 challenge = "s3-http-01"
+
+[schedular]
+encrypted_slack_incoming_webhook_url = ""
+authz_renewal_days_before = 40
+cert_renewal_days_before = 30
