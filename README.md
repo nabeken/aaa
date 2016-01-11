@@ -8,16 +8,15 @@ This design allows us to run ACME agent in stateless (e.g. AWS Lambda).
 
 - :heavy_check_mark: New Registration
 - :heavy_check_mark: New Authorization
-  - :heavy_check_mark: http-01
   - :heavy_check_mark: S3-based http-01
-  - :heavy_check_mark: dns-01 with Route53 but [DNS01 is still broken on Let's Encrypt side](https://github.com/letsencrypt/boulder/pull/1295)
+  - :heavy_check_mark: dns-01 with Route53
 - :heavy_check_mark: Create CSR with [SAN (Subject Alternative Name)](https://en.wikipedia.org/wiki/SubjectAltName)
 - :heavy_check_mark: Issue certificates
 - :heavy_check_mark: Store data on S3 with SSE-KMS
 - :heavy_check_mark: Renewal management by utilizing S3
-- :construction: AWS Lambda build
+- :heavy_check_mark: AWS Lambda build
   - :heavy_check_mark: authz, cert
-  - :construction: automatic certificates renewal
+  - :heavy_check_mark: automatic certificates renewal
 
 ## Installation
 
@@ -93,7 +92,7 @@ aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --agree
 `aaa` implements the solvers for the following challenges:
 
 - s3-http-01: This is a workaround until `dns-01` is properly landed on Let's Encrypt's side.
-- dns-01: This will be our main method to automate things but it does not work due to LE's bad.
+- dns-01: This will be our main method to automate things but it is availble on the staging but not landed on the production.
 
 We introduce `s3-http-01` method here.
 
@@ -152,50 +151,22 @@ To show all accounts and certificates, you can use `ls` subcommand like this:
 
 ```sh
 aaa ls --s3-bucket YourBucket --s3-kms-key xxxx | jq -r .
-{
-  "accounts": [
-    {
-      "email": "letest-stag-2@example.com",
-      "domains": [
-        {
-          "domain": "le-test-http-01.example.com",
-          "authorization": {
-            "expires": "2016-10-27T04:16:59Z"
-          },
-          "certificate": {
-            "not_before": "2016-01-01T03:18:00Z",
-            "not_after": "2016-03-31T03:18:00Z"
-          }
-        },
-        {
-          "domain": "le-test-http-02.example.com",
-          "authorization": {
-            "expires": "2016-10-27T04:20:45Z"
-          },
-          "certificate": {
-            "not_before": "2016-01-01T03:21:00Z",
-            "not_after": "2016-03-31T03:21:00Z"
-          }
-        }
-      ]
+[
+  {
+    "email": "letest-stag@example.com",
+    "domain": "le-test-dns-01.example.com",
+    "authorization": {
+      "expires": "2016-11-06T16:57:22Z"
     },
-    {
-      "email": "letest-stag@example.com",
-      "domains": [
-        {
-          "domain": "le-test-http-01.example.com",
-          "authorization": {
-            "expires": "2016-10-27T03:11:11Z"
-          },
-          "certificate": {
-            "not_before": "2016-01-01T02:13:00Z",
-            "not_after": "2016-03-31T02:13:00Z"
-          }
-        }
+    "certificate": {
+      "not_before": "2016-01-11T16:02:00Z",
+      "not_after": "2016-04-10T16:02:00Z",
+      "san": [
+        "le-test-dns-01.example.com"
       ]
     }
-  ]
-}
+  }
+]
 ```
 
 Please note that information is encoded in JSON. This information will be used for certificate renewal management and
