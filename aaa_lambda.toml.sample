@@ -1,3 +1,6 @@
+[lambda]
+executor_function_name = "aaa-executor"
+
 [dispatcher]
 encrypted_slack_token = ""
 

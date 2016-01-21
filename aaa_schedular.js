@@ -7,7 +7,6 @@ var child_process = require('child_process'),
 require('toml-require').install();
 
 var aaa_cmd_path = './main';
-var executorFunctionName = 'aaa-executor';
 
 var slack_incoming_webhook_url;
 var kms = new AWS.KMS();
@@ -84,7 +83,7 @@ var process_event = function(event, context) {
       var deferred = Q.defer();
       console.log('invoking: ' + JSON.stringify(candidate));
       lambda.invoke({
-        'FunctionName': executorFunctionName,
+        'FunctionName': config.lambda.executor_function_name,
         'InvocationType': 'Event',
         'Payload': JSON.stringify(candidate),
       }, function(error) {

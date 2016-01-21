@@ -5,8 +5,6 @@ var AWS = require('aws-sdk');
 
 require('toml-require').install();
 
-var executorFunctionName = 'aaa-executor';
-
 // token will be initialized later.
 var token;
 
@@ -77,7 +75,7 @@ var processEvent = function(event, context) {
   console.log('aaa-request: ' + JSON.stringify(aaaReq));
 
   lambda.invoke({
-    'FunctionName': executorFunctionName,
+    'FunctionName': config.lambda.executor_function_name,
     'InvocationType': 'Event',
     'Payload': JSON.stringify(aaaReq),
   }, function(error) {
