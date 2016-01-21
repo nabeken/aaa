@@ -5,6 +5,7 @@ executor_function_name = "aaa-executor"
 encrypted_slack_token = ""
 
 [executor]
+default_email = "foobar@example.com"
 directory_url = "https://acme-staging.api.letsencrypt.org/directory"
 s3_bucket = ""
 kms_key = ""

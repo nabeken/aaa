@@ -56,13 +56,23 @@ var processEvent = function(event, context) {
 
   var commandArgs = commandText.split(' ');
 
-  if (commandArgs.length < 3) {
+  // /letsencrypt [command] [email] [domain...]
+  // /letsencrypt [command] [domain...]
+
+  if (commandArgs.length < 2) {
     context.fail('invalid command args received: ' + commandArgs);
     return;
   }
 
   var aaaCommand = commandArgs.shift();
-  var aaaEmail = commandArgs.shift();
+
+  var aaaEmail;
+  if (commandArgs[0].indexOf('@') > 0) {
+    aaaEmail = commandArgs.shift();
+  } else {
+    aaaEmail = config.executor.default_email;
+  }
+
   var aaaDomains = commandArgs;
 
   var aaaReq = {
