@@ -104,12 +104,21 @@ func (s *Store) SaveKey(privateKey jwk.Key) error {
 }
 
 func (s *Store) SaveCertKey(domain string, privateKey jwk.Key) error {
-	blob, err := json.Marshal(privateKey)
+	key, err := privateKey.Materialize()
 	if err != nil {
 		return err
 	}
 
-	return s.filer.WriteFile(s.joinPrefix("domain", domain, "privkey.jwk"), blob)
+	rsaPrivKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return fmt.Errorf("aaa: key is not *rsa.PrivateKey but %v", privateKey)
+	}
+
+	buf := new(bytes.Buffer)
+	if err := pem.Encode(buf, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rsaPrivKey)}); err != nil {
+		return err
+	}
+	return s.filer.WriteFile(s.joinPrefix("domain", domain, "privkey.pem"), buf.Bytes())
 }
 
 func (s *Store) LoadCertKey(domain string) (jwk.Key, error) {
