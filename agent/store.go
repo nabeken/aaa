@@ -139,10 +139,13 @@ func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {
 	return x509.ParseCertificate(block.Bytes)
 }
 
-func (s *Store) SaveCert(domain string, cert *x509.Certificate) error {
+func (s *Store) SaveCert(domain string, certs ...*x509.Certificate) error {
 	buf := new(bytes.Buffer)
-	if err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
-		return err
+
+	for _, cert := range certs {
+		if err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
+			return err
+		}
 	}
 
 	return s.filer.WriteFile(s.joinPrefix("domain", domain, "cert.pem"), buf.Bytes())

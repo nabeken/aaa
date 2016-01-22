@@ -108,12 +108,12 @@ func (c *CertCommand) Run() error {
 
 	log.Printf("INFO: certificate will be available at %s", certURL)
 
-	cert, err := client.GetCertificate(certURL)
+	issuerCert, myCert, err := client.GetCertificate(certURL)
 	if err != nil {
 		return err
 	}
 
-	if err := store.SaveCert(c.CommonName, cert); err != nil {
+	if err := store.SaveCert(c.CommonName, issuerCert, myCert); err != nil {
 		return err
 	}
 

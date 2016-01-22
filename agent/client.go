@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/lestrrat/go-jwx/jwa"
@@ -332,17 +333,17 @@ func (c *Client) NewCertificate(der string) (string, error) {
 	return resp.Header.Get("Location"), nil
 }
 
-func (c *Client) GetCertificate(uri string) (*x509.Certificate, error) {
+func (c *Client) GetCertificate(uri string) (*x509.Certificate, *x509.Certificate, error) {
 	last := time.Duration(3 * time.Minute)
 	for begin := time.Now(); time.Since(begin) < last; time.Sleep(5 * time.Second) {
 		resp, err := c.httpClient.Get(uri)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode > 299 {
-			return nil, NewACMEError(resp)
+			return nil, nil, NewACMEError(resp)
 		}
 
 		if resp.StatusCode == http.StatusAccepted {
@@ -352,15 +353,55 @@ func (c *Client) GetCertificate(uri string) (*x509.Certificate, error) {
 
 		blob, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if resp.StatusCode == http.StatusOK {
-			return x509.ParseCertificate(blob)
+			myCert, err := x509.ParseCertificate(blob)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			issuerCertLink, err := FindLinkByName(resp, "up")
+			if err != nil {
+				return nil, nil, err
+			}
+
+			Debug("Retrieving issuer's certificate...")
+
+			// FIXME: issuerCertLink.URI is not URI... it's just a relative link.
+			// so resolving this here...
+			u, err := url.Parse(uri)
+			if err != nil {
+				return nil, nil, err
+			}
+			u.Path = issuerCertLink.URI
+
+			issuerResp, err := c.httpClient.Get(u.String())
+			if err != nil {
+				return nil, nil, err
+			}
+			defer issuerResp.Body.Close()
+
+			if issuerResp.StatusCode > 299 {
+				return nil, nil, errors.New("aaa: failed to retrieve issuer's certificate")
+			}
+
+			issuerBlob, err := ioutil.ReadAll(issuerResp.Body)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			issuerCert, err := x509.ParseCertificate(issuerBlob)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return issuerCert, myCert, nil
 		}
 	}
 
-	return nil, fmt.Errorf("aaa: certificate is not available within %s", last)
+	return nil, nil, fmt.Errorf("aaa: certificate is not available within %s", last)
 }
 
 func (c *Client) NewAuthorization(req *NewAuthorizationRequest) (*Authorization, error) {
@@ -506,7 +547,7 @@ func (c *Client) updateNonce(resp *http.Response) {
 	}
 }
 
-func FindTOS(resp *http.Response) (link.Link, error) {
+func FindLinkByName(resp *http.Response, name string) (link.Link, error) {
 	for _, header := range resp.Header[http.CanonicalHeaderKey("Link")] {
 		links, err := link.Parse(header)
 		if err != nil {
@@ -514,12 +555,16 @@ func FindTOS(resp *http.Response) (link.Link, error) {
 		}
 
 		for _, link := range links {
-			if link.Rel == "terms-of-service" {
+			if link.Rel == name {
 				return link, nil
 			}
 		}
 	}
-	return link.Link{}, errors.New("aaa: no TOS link found")
+	return link.Link{}, errors.New("aaa: no link found")
+}
+
+func FindTOS(resp *http.Response) (link.Link, error) {
+	return FindLinkByName(resp, "terms-of-service")
 }
 
 func Body(resp *http.Response) string {
