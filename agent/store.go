@@ -29,6 +29,7 @@ Per Store instance:
 	- privkey.jwk   -- the private key in JWK
 	- fullchain.pem -- the cert + intermediates
 	- cert.pem      -- the cert only
+	- chain.pem     -- the intermediate only
 */
 
 type Store struct {
@@ -148,16 +149,40 @@ func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {
 	return x509.ParseCertificate(block.Bytes)
 }
 
-func (s *Store) SaveCert(domain string, certs ...*x509.Certificate) error {
+func (s *Store) SaveCert(domain string, issuerCert, myCert *x509.Certificate) error {
 	buf := new(bytes.Buffer)
 
-	for _, cert := range certs {
-		if err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
+	for _, f := range []struct {
+		Name  string
+		Certs []*x509.Certificate
+	}{
+		{
+			Name:  "fullchain.pem",
+			Certs: []*x509.Certificate{issuerCert, myCert},
+		},
+		{
+			Name:  "cert.pem",
+			Certs: []*x509.Certificate{myCert},
+		},
+		{
+			Name:  "chain.pem",
+			Certs: []*x509.Certificate{issuerCert},
+		},
+	} {
+		for _, cert := range f.Certs {
+			if err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
+				return err
+			}
+		}
+
+		if err := s.filer.WriteFile(s.joinPrefix("domain", domain, f.Name), buf.Bytes()); err != nil {
 			return err
 		}
+
+		buf.Reset()
 	}
 
-	return s.filer.WriteFile(s.joinPrefix("domain", domain, "cert.pem"), buf.Bytes())
+	return nil
 }
 
 func (s *Store) LoadAuthorization(domain string) (*Authorization, error) {
