@@ -76,15 +76,6 @@ func (c *AuthzCommand) Run() error {
 	var challengeSolver agent.ChallengeSolver
 
 	switch c.Challenge {
-	case "s3-http-01":
-		httpChallenge, found := agent.FindHTTPChallenge(authzResp)
-		if !found {
-			return errors.New("aaa: no HTTP challenge and its combination found")
-		}
-
-		challenge = httpChallenge
-		challengeSolver = agent.NewS3HTTPChallengeSolver(s3b, httpChallenge, c.Domain)
-
 	case "dns-01":
 		dnsChallenge, found := agent.FindDNSChallenge(authzResp)
 		if !found {
