@@ -158,7 +158,7 @@ func (s *Store) SaveCert(domain string, issuerCert, myCert *x509.Certificate) er
 	}{
 		{
 			Name:  "fullchain.pem",
-			Certs: []*x509.Certificate{issuerCert, myCert},
+			Certs: []*x509.Certificate{myCert, issuerCert},
 		},
 		{
 			Name:  "cert.pem",
