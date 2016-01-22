@@ -1,14 +1,15 @@
 # aaa
 
-AAA is an [ACME](https://tools.ietf.org/html/draft-ietf-acme-acme-01) Agent for AWS environment.
+AAA is an [ACME](https://ietf-wg-acme.github.io/acme/) Agent for AWS environment.
 All information is stored on [S3 with SSE-KMS](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html).
 This design allows us to run ACME agent in stateless (e.g. AWS Lambda).
 
-## Current Status: alpha
+## Current Status: beta
+
+AAA works well with DNS-01 on LE's production environment. It means you can issue certificates without HTTP servers.
 
 - :heavy_check_mark: New Registration
 - :heavy_check_mark: New Authorization
-  - :heavy_check_mark: S3-based http-01
   - :heavy_check_mark: dns-01 with Route53
 - :heavy_check_mark: Create CSR with [SAN (Subject Alternative Name)](https://en.wikipedia.org/wiki/SubjectAltName)
 - :heavy_check_mark: Issue certificates
@@ -17,10 +18,11 @@ This design allows us to run ACME agent in stateless (e.g. AWS Lambda).
 - :heavy_check_mark: AWS Lambda build
   - :heavy_check_mark: authz, cert
   - :heavy_check_mark: automatic certificates renewal
+- :heavy_check_mark: Confirmed that it works well with ELB
 
 ## Installation
 
-aaa is still in alpha so no pre-built binaries are available.
+aaa is still in beta so no pre-built binaries are available.
 
 ```sh
 go get -u github.com/nabeken/aaa
@@ -32,7 +34,6 @@ go get -u github.com/nabeken/aaa
 
 - AWS KMS Encryption Key for encrypting all data in the S3 bucket and token in the Lambda Function
 - A dedicated S3 bucket that holds
-  - `/.well-known/*`: will be used to answer http-01 challenge so under this prefix will be public
   - `/aaa-data/*`: will be used for all generated secrets and certificates so under this prefix MUST be encrypted
 
 To protect you from uploading data without encryption, I highly recommend you to add a bucket policy like this:
@@ -89,52 +90,16 @@ aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --agree
 
 ## Authorization
 
-`aaa` implements the solvers for the following challenges:
-
-- s3-http-01: This is a workaround until `dns-01` is properly landed on Let's Encrypt's side.
-- dns-01: This will be our main method to automate things but it is availble on the staging but not landed on the production.
-
-We introduce `s3-http-01` method here.
-
-With `s3-http-01`, information needed for challenge is stored on S3 bucket by `aaa`.
-A target web server must be configured in advance to redirect a request from LE to S3 bucket.
-
-```txt
-+-----+  (1) new-authz    +-------------+  (5) GET /.well-known/acme-challenge/{token}   +--------+
-|     |  -------------->  |             |  ------------------------------------------->  |        |
-| aaa |  (2) challenge    | ACME server |  (6) redirect to s3://foobar/.well-known/....  | target |
-|     |  <--------------  |             |  <-------------------------------------------  |        |
-|     |  (4) authz        |             |                                                +--------+
-+-----+  -------------->  +-------------+
-   |                         |
-   |                         | (7) GET /.well-known/acme-challenge/{token}
-   |                        \|/
-   |     (3) put        +----------+
-   +------------------> |    S3    |
-                        +----------+
-```
-
-Example for nginx:
-
-```txt
-location /.well-known/acme-challenge/ {
-    return 302 https://s3-{region}.amazonaws.com/your-s3-bucket$request_uri;
-}
-```
-
-To communicate with S3, you also need to setup AWS credentials. `aaa` currently utilizes the default behavior of `aws-sdk-go`.
-Please see [Configuring SDK](https://github.com/aws/aws-sdk-go/wiki/configuring-sdk) for detail.
-
-It's time to authorize!
+`aaa` implements DNS-01 solver. You must provide Route53 environment.
 
 ```sh
-aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --domain le-test-01.example.com --challenge s3-http-01 --s3-bucket your-s3-bucket
+aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --domain le-test-01.example.com --challenge dns-01
 ```
 
 Bonus: You authorize more domains, you will get a certificate that has SAN for your domains.
 
 ```sh
-aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --domain le-test-02.example.com --challenge s3-http-01 --s3-bucket your-s3-bucket
+aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --domain le-test-02.example.com --challenge dns-01
 ```
 
 ## Certificate issuance
