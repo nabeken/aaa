@@ -44,3 +44,11 @@ func InstallLsCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.Ls
 
 	return ls, cmd
 }
+
+func InstallSyncCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.SyncCommand) {
+	cmd := &command.SyncCommand{}
+	sync := app.Command("sync", "Sync with the certificate in S3")
+	sync.Flag("domain", "Domain to be synced").Required().StringVar(&cmd.Domain)
+
+	return sync, cmd
+}

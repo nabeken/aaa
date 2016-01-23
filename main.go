@@ -21,10 +21,11 @@ func realMain() error {
 	authzCmd, authz := InstallAuthzCommand(app)
 	certCmd, cert := InstallCertCommand(app)
 	lsCmd, ls := InstallLsCommand(app)
+	syncCmd, sync := InstallSyncCommand(app)
 
 	s3Config := &command.S3Config{}
 	app.Flag("s3-bucket", "S3 Bucket Name").Required().StringVar(&s3Config.Bucket)
-	app.Flag("s3-kms-key", "KMS Key ID for S3 SSE-KMS").Required().StringVar(&s3Config.KMSKeyID)
+	app.Flag("s3-kms-key", "KMS Key ID for S3 SSE-KMS").StringVar(&s3Config.KMSKeyID)
 
 	email := app.Flag("email", "Email Address").String()
 
@@ -48,6 +49,10 @@ func realMain() error {
 		ls.S3Config = s3Config
 		ls.Email = *email
 		return ls.Run()
+	case syncCmd.FullCommand():
+		sync.S3Config = s3Config
+		sync.Email = *email
+		return sync.Run()
 	}
 
 	return nil

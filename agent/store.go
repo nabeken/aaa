@@ -26,7 +26,7 @@ Per Store instance:
 
 {{email}}/domain/{{domain}}/
     - authz.json    -- the authorization result
-	- privkey.jwk   -- the private key in JWK
+	- privkey.pem   -- the private key in PEM
 	- fullchain.pem -- the cert + intermediates
 	- cert.pem      -- the cert only
 	- chain.pem     -- the intermediate only
