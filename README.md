@@ -185,6 +185,8 @@ Create an R/O IAM role/user for a specific prefix like `/aaa-data/foobar@example
 }
 ```
 
+And add this user to KMS users.
+
 Do `aaa sync` with the prefix periodically:
 
 ```sh
