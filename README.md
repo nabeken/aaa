@@ -152,6 +152,54 @@ If you want to regenerate the key, add `--renewal-key` flag too:
 aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --renewal --renewal-key --cn le-test-01.example.com --domain le-test-02.example.com
 ```
 
+## Certificate distribution
+
+Create an R/O IAM role/user for a specific prefix like `/aaa-data/foobar@example.com/domain/le-test.example.com` like this:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1453475376000",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::example-bucket/aaa-data/foobar@example.com/domain/le-test.example.com/*"
+            ]
+        },
+        {
+            "Sid": "Stmt1453475425000",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::example-bucket"
+            ]
+        }
+    ]
+}
+```
+
+Do `aaa sync` with the prefix periodically:
+
+```sh
+aaa sync --email foobar@example.com --domain le-test.example.com --s3-bucket example-bucket
+```
+
+Profit!
+
+Or
+
+1. Create an R/O IAM role/user for a specific prefix like `/aaa-data/foobar@example.com/domain/le-test.example.com`
+2. When automatic renewal process puts new certificate on S3, S3 notifications will be generated
+3. Respond with the notification with Lambda Function and update the certificate
+4. Profit!
+
 ## Slack integration with AWS Lambda
 
 We integrate `aaa` with Slack's [Slash Commands](https://api.slack.com/slash-commands). To do this, we need:
@@ -300,21 +348,6 @@ aws lambda create-function \
 
 Currently, you can setup Scheduled Events only from AWS Management Console.
 Please add a scheduled event source to `aaa-Schedular`. 1 day is sufficient.
-
-## Certificate distribution
-
-TBD
-
-1. Create an R/O IAM role/user for a specific prefix like `/aaa-data/foobar@example.com/domain/le-test.example.com`
-2. Do `aws s3 sync` with the prefix periodically
-3. Profit!
-
-Or
-
-1. Create an R/O IAM role/user for a specific prefix like `/aaa-data/foobar@example.com/domain/le-test.example.com`
-2. When automatic renewal process puts new certificate on S3, S3 notifications will be generated
-3. Respond with the notification with Lambda Function and update the certificate
-4. Profit!
 
 ## Integrated libraries
 
