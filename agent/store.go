@@ -123,20 +123,18 @@ func (s *Store) SaveCertKey(domain string, privateKey jwk.Key) error {
 }
 
 func (s *Store) LoadCertKey(domain string) (jwk.Key, error) {
-	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "privkey.jwk"))
+	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "privkey.pem"))
 	if err != nil {
 		return nil, err
 	}
 
-	keyset, err := jwk.Parse(blob)
+	derBlock, _ := pem.Decode(blob)
+	key, err := x509.ParsePKCS1PrivateKey(derBlock.Bytes)
 	if err != nil {
 		return nil, err
 	}
-	if len(keyset.Keys) == 0 {
-		return nil, errors.New("aaa: no key found")
-	}
 
-	return keyset.Keys[0], nil
+	return jwk.NewRsaPrivateKey(key)
 }
 
 func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {
