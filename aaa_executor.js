@@ -57,7 +57,7 @@ exports.handler = function(event, context) {
         deferred.reject(log_buf);
       } else {
         console.log('aaa exited successuflly');
-        deferred.resolve();
+        deferred.resolve(log_buf);
       }
     });
 
@@ -74,7 +74,7 @@ exports.handler = function(event, context) {
       // send a response to slack
       request.post(message.event.response_url, {
         'json': true,
-        'body': build_slack_notification(message),
+        'body': build_slack_notification(results, message),
         'headers': {
           'Content-Type': 'application/json',
         },
@@ -132,6 +132,10 @@ var build_aaa_cmds = function(message) {
   }
 
   switch (message.command) {
+    case 'upload':
+      cmd.push('--domain', message.domains[0]);
+      return [cmd.join(' ')];
+
     case 'authz':
       cmd.push('--challenge', config.executor.challenge);
 
@@ -157,8 +161,16 @@ var build_aaa_cmds = function(message) {
   return '';
 };
 
-var build_slack_notification = function(message) {
+var build_slack_notification = function(results, message) {
   switch (message.command) {
+    case 'upload':
+        return {
+          'response_type': 'in_channel',
+          'text': '@' + message.event.user_name + ": the cert has been uploaded to IAM!\n" +
+                  "```\n" +
+                  results +
+                  '```',
+        };
     case 'authz':
       if (message.renewal) {
         return {

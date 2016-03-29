@@ -265,6 +265,7 @@ It has the following managed policies:
 - `AmazonRoute53FullAccess`
 - `CloudWatchLogsFullAccesss`
 - `AWSLambdaRole`
+- `IAMFullAccess`
 
 and it has the following inline policy `aaa-kms`:
 
