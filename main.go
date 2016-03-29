@@ -22,6 +22,7 @@ func realMain() error {
 	certCmd, cert := InstallCertCommand(app)
 	lsCmd, ls := InstallLsCommand(app)
 	syncCmd, sync := InstallSyncCommand(app)
+	uploadCmd, upload := InstallUploadCommand(app)
 
 	s3Config := &command.S3Config{}
 	app.Flag("s3-bucket", "S3 Bucket Name").Required().StringVar(&s3Config.Bucket)
@@ -53,6 +54,10 @@ func realMain() error {
 		sync.S3Config = s3Config
 		sync.Email = *email
 		return sync.Run()
+	case uploadCmd.FullCommand():
+		upload.S3Config = s3Config
+		upload.Email = *email
+		return upload.Run()
 	}
 
 	return nil

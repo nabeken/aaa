@@ -52,3 +52,11 @@ func InstallSyncCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.
 
 	return sync, cmd
 }
+
+func InstallUploadCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.UploadCommand) {
+	cmd := &command.UploadCommand{}
+	upload := app.Command("upload", "Upload the certificate to IAM")
+	upload.Flag("domain", "Domain to be uploaded").Required().StringVar(&cmd.Domain)
+
+	return upload, cmd
+}
