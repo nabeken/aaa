@@ -184,25 +184,16 @@ var build_slack_notification = function(results, message) {
                   'You are ready to issue the certificates.',
         };
       }
-      break;
     case 'cert':
-      if (message.renewal) {
-        return {
-          'response_type': 'in_channel',
-          'text': 'the certificates for ' + message.domains.join(', ') + ' now renewed!',
-        };
-      } else {
-        return {
-          'response_type': 'in_channel',
-          'text': '@' + message.event.user_name + ': the certificates for ' +
-                  message.domains.join(', ') + " now available!\n" +
-                  "```\n" +
-                  "aws s3 sync s3://" + config.executor.s3_bucket + '/aaa-data/' +
-                  message.email + '/domain/' + message.domains[0] + " " + message.domains[0] +
-                  "\n```",
-        };
-      }
-      break;
+      return {
+        'response_type': 'in_channel',
+        'text': '@' + message.event.user_name + ': the certificates for ' +
+                message.domains.join(', ') + " now available!\n" +
+                "```\n" +
+                "aws s3 sync s3://" + config.executor.s3_bucket + '/aaa-data/' +
+                message.email + '/domain/' + message.domains[0] + " " + message.domains[0] +
+                "\n```",
+      };
   }
 };
 

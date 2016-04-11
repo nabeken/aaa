@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/nabeken/aaa/agent"
@@ -17,7 +16,6 @@ type CertCommand struct {
 
 	CommonName string
 	Domains    []string
-	Renewal    bool
 	RenewalKey bool
 }
 
@@ -27,30 +25,13 @@ func (c *CertCommand) Run() error {
 		return err
 	}
 
-	// Loading certificate unless we set Renewal flag
-	if !c.Renewal {
-		if cert, err := store.LoadCert(c.CommonName); err != nil && err != agent.ErrFileNotFound {
-			// something is wrong
-			return err
-		} else if err == nil {
-			// If it is found and expiration date is 1 month later, we stop here.
-			monthBefore := cert.NotAfter.AddDate(0, -1, 0)
-			if time.Now().Before(monthBefore) {
-				// we have still 1 month before the cert is expired
-				log.Print("INFO: the certificate is up-to-date")
-				return nil
-			}
-			log.Printf("INFO: the certificate will be expired at %s so renewing now", cert.NotAfter)
-		}
-	}
-
 	log.Print("INFO: now issuing certificate...")
 
 	var privateKey *rsa.PrivateKey
 
 	// Creating private key for cert
 	// when it is not renewal or RenewalKey is specified
-	if !c.Renewal || c.RenewalKey {
+	if c.RenewalKey {
 		log.Print("INFO: creating new private key...")
 		certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
 		if err != nil {

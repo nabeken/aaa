@@ -31,7 +31,6 @@ func InstallCertCommand(app *kingpin.Application) (*kingpin.CmdClause, *command.
 	cert.Flag("domain", "Domains to be use as Subject Alternative Name").
 		StringsVar(&cmd.Domains)
 
-	cert.Flag("renewal", "Renew the certificate").BoolVar(&cmd.Renewal)
 	cert.Flag("renewal-key", "Renew the key").BoolVar(&cmd.RenewalKey)
 
 	return cert, cmd
