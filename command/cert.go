@@ -16,7 +16,7 @@ type CertCommand struct {
 
 	CommonName string
 	Domains    []string
-	RenewalKey bool
+	CreateKey  bool
 }
 
 func (c *CertCommand) Run() error {
@@ -30,8 +30,7 @@ func (c *CertCommand) Run() error {
 	var privateKey *rsa.PrivateKey
 
 	// Creating private key for cert
-	// when it is not renewal or RenewalKey is specified
-	if c.RenewalKey {
+	if c.CreateKey {
 		log.Print("INFO: creating new private key...")
 		certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
 		if err != nil {

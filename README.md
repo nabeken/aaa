@@ -107,8 +107,11 @@ aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --dom
 Let's issue a certifiate for two domains `le-test-0[12].example.com`. If you don't want to issue a certificate with SAN, just drop `--domain` argument.
 
 ```
-aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --cn le-test-01.example.com --domain le-test-02.example.com
+aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --cn le-test-01.example.com --domain le-test-02.example.com --create-key
 ```
+
+Please note `--create-key` is required for the first time since you don't have a private key for the certificate.
+To renew the cert, you can still reuse the private key with omitting `--create-key` or re-generate it with `--create-key`.
 
 ## Listing all information
 
@@ -139,17 +142,17 @@ it allows another processes to consume the info easily.
 
 ## Certificate renewal
 
-If the authorization is still available, you can just issue the certificate again by passing `--renewal` flag.
+If the authorization is still available, you can just issue the certificate.
 Otherwise, you need to begin with authorization by using `authz` subcommand. See the above.`Authorization` section.
 
 ```sh
-aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --renewal --cn le-test-01.example.com --domain le-test-02.example.com
+aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --cn le-test-01.example.com --domain le-test-02.example.com
 ```
 
-If you want to regenerate the key, add `--renewal-key` flag too:
+If you want to regenerate the private key, add `--create-key` flag too:
 
 ```sh
-aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --renewal --renewal-key --cn le-test-01.example.com --domain le-test-02.example.com
+aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --create-key --cn le-test-01.example.com --domain le-test-02.example.com
 ```
 
 ## Certificate distribution
