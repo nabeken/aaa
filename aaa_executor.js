@@ -127,10 +127,6 @@ var build_aaa_cmds = function(message) {
     '--email', message.email,
   ];
 
-  if (message.renewal) {
-    cmd.push('--renewal');
-  }
-
   switch (message.command) {
     case 'upload':
       cmd.push('--domain', message.domains[0]);
