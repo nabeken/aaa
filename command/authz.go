@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
@@ -19,8 +18,6 @@ type AuthzCommand struct {
 
 	Domain    string
 	Challenge string
-
-	Renewal bool
 }
 
 func (c *AuthzCommand) Run() error {
@@ -30,22 +27,6 @@ func (c *AuthzCommand) Run() error {
 	store, err := agent.NewStore(c.Email, filer)
 	if err != nil {
 		return err
-	}
-
-	// If we have authorized domain, we skip authorization request.
-	if authz, err := store.LoadAuthorization(c.Domain); err != nil && err != agent.ErrFileNotFound {
-		// something is wrong
-		return err
-	} else if err == nil && !c.Renewal {
-		agent.Debug("previous authorization will be expired at ", authz.Expires)
-
-		if !authz.IsExpired(time.Now()) {
-			log.Printf("INFO: authorization for %s has been done. See %s", c.Domain, authz.URL)
-			return nil
-		}
-
-		// re-authorization is required.
-		log.Printf("INFO: previous authorization is expired. re-authorization is required for %s", c.Domain)
 	}
 
 	log.Printf("INFO: start authorization for %s with %s", c.Domain, c.Challenge)
@@ -70,8 +51,6 @@ func (c *AuthzCommand) Run() error {
 
 	log.Printf("INFO: authorization: %s", authzResp.URL)
 
-	// as of 2015/12/15, DNS-01 challenge is broken on LE's end
-	// so we now use HTTP-01 challenge instead....
 	var challenge agent.Challenge
 	var challengeSolver agent.ChallengeSolver
 
