@@ -43,7 +43,6 @@ var process_event = function(event, context) {
 
     domains.forEach(function(domain) {
       var after_1m = moment().add(config.schedular.cert_renewal_days_before, "days");
-      var after_40d = moment().add(config.schedular.authz_renewal_days_before, "days");
 
       var cert_not_after = moment(domain.certificate.not_after);
       var authz_expires = moment(domain.authorization.expires);
@@ -63,10 +62,12 @@ var process_event = function(event, context) {
         }
       });
 
-      if (after_40d.isAfter(authz_expires)) {
+      if (moment().isAfter(authz_expires)) {
         candidate.command = 'authz';
       } else if (after_1m.isAfter(cert_not_after)) {
         candidate.command = 'cert';
+      } else {
+        return;
       }
 
       if (candidate.command) {
