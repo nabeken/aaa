@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/lestrrat/go-jwx/jwa"
@@ -369,15 +368,7 @@ func (c *Client) GetCertificate(uri string) (*x509.Certificate, *x509.Certificat
 
 			Debug("Retrieving issuer's certificate...")
 
-			// FIXME: issuerCertLink.URI is not URI... it's just a relative link.
-			// so resolving this here...
-			u, err := url.Parse(uri)
-			if err != nil {
-				return nil, nil, err
-			}
-			u.Path = issuerCertLink.URI
-
-			issuerResp, err := c.httpClient.Get(u.String())
+			issuerResp, err := c.httpClient.Get(issuerCertLink.URI)
 			if err != nil {
 				return nil, nil, err
 			}
