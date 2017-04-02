@@ -1,64 +1,62 @@
 package main
 
 import (
-	"log"
 	"os"
 
+	"github.com/jessevdk/go-flags"
 	"github.com/nabeken/aaa/command"
-	"gopkg.in/alecthomas/kingpin.v2"
+)
+
+var (
+	parser = flags.NewParser(&command.Options, flags.Default)
 )
 
 func main() {
-	if err := realMain(); err != nil {
-		log.Fatal("ERROR: ", err)
-	}
+	os.Exit(realmain())
 }
 
-func realMain() error {
-	app := kingpin.New("aaa", "ACME Agent For AWS environment")
-
-	regCmd, reg := InstallRegCommand(app)
-	authzCmd, authz := InstallAuthzCommand(app)
-	certCmd, cert := InstallCertCommand(app)
-	lsCmd, ls := InstallLsCommand(app)
-	syncCmd, sync := InstallSyncCommand(app)
-	uploadCmd, upload := InstallUploadCommand(app)
-
-	s3Config := &command.S3Config{}
-	app.Flag("s3-bucket", "S3 Bucket Name").Required().StringVar(&s3Config.Bucket)
-	app.Flag("s3-kms-key", "KMS Key ID for S3 SSE-KMS").StringVar(&s3Config.KMSKeyID)
-
-	email := app.Flag("email", "Email Address").String()
-
-	// Parse args
-	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
-
-	switch cmd {
-	case regCmd.FullCommand():
-		reg.S3Config = s3Config
-		reg.Email = *email
-		return reg.Run()
-	case authzCmd.FullCommand():
-		authz.S3Config = s3Config
-		authz.Email = *email
-		return authz.Run()
-	case certCmd.FullCommand():
-		cert.S3Config = s3Config
-		cert.Email = *email
-		return cert.Run()
-	case lsCmd.FullCommand():
-		ls.S3Config = s3Config
-		ls.Email = *email
-		return ls.Run()
-	case syncCmd.FullCommand():
-		sync.S3Config = s3Config
-		sync.Email = *email
-		return sync.Run()
-	case uploadCmd.FullCommand():
-		upload.S3Config = s3Config
-		upload.Email = *email
-		return upload.Run()
+func realmain() int {
+	if _, err := parser.Parse(); err != nil {
+		return 1
 	}
+	return 0
+}
 
-	return nil
+func init() {
+	parser.AddCommand(
+		"reg",
+		"Register an account to Let's Encrypt",
+		"The reg command registers an account.",
+		&command.RegCommand{},
+	)
+	parser.AddCommand(
+		"authz",
+		"Authorize a domain",
+		"The authz command authorizes a domain.",
+		&command.AuthzCommand{},
+	)
+	parser.AddCommand(
+		"cert",
+		"Issue certificates",
+		"The cert command issues certificates.",
+		&command.CertCommand{},
+	)
+	parser.AddCommand(
+		"ls",
+		"List domains",
+		"The ls command lists domains.",
+		&command.LsCommand{},
+	)
+	parser.AddCommand(
+		"sync",
+		"Sync the certificates",
+		"The sync command synchronizes the certificates from S3.",
+		&command.SyncCommand{},
+	)
+	parser.AddCommand(
+		"upload",
+		"Upload the certificate to IAM",
+		"The upload command uploads the certificates to IAM.",
+		&command.UploadCommand{},
+	)
 }

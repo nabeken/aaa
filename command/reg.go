@@ -11,15 +11,12 @@ import (
 )
 
 type RegCommand struct {
-	S3Config *S3Config
-
-	Email    string
-	AgreeTOS string
+	AgreeTOS string `long:"agree" description:"Agree with given TOS of URL"`
 }
 
-func (c *RegCommand) Run() error {
+func (c *RegCommand) Execute(args []string) error {
 	// initialize S3 bucket and filer
-	store, err := newStore(c.Email, c.S3Config)
+	store, err := newStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
 	if err != nil {
 		return err
 	}
@@ -73,7 +70,7 @@ func (c *RegCommand) Run() error {
 
 		// begin new registration
 		newRegReq := &agent.NewRegistrationRequest{
-			Contact: []string{"mailto:" + c.Email},
+			Contact: []string{"mailto:" + Options.Email},
 		}
 
 		acc, err := client.Register(newRegReq)
@@ -96,7 +93,7 @@ func (c *RegCommand) Run() error {
 
 	// update registration to agree with TOS
 	updateRegReq := &agent.UpdateRegistrationRequest{
-		Contact:   []string{"mailto:" + c.Email},
+		Contact:   []string{"mailto:" + Options.Email},
 		Agreement: c.AgreeTOS,
 		Key:       publicKey,
 	}

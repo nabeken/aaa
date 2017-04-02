@@ -10,22 +10,19 @@ import (
 )
 
 type SyncCommand struct {
-	S3Config *S3Config
-	Email    string
-	Domain   string
+	Domain string `long:"domain" description:"Domain to be synced" required:"true"`
 
 	s3Filer *agent.S3Filer
 	osFiler *agent.OSFiler
 }
 
 func (c *SyncCommand) init() {
-	s3b := bucket.New(s3.New(session.New()), c.S3Config.Bucket)
+	s3b := bucket.New(s3.New(session.New()), Options.S3Bucket)
 	c.s3Filer = agent.NewS3Filer(s3b, "")
-
 	c.osFiler = &agent.OSFiler{c.Domain}
 }
 
-func (c *SyncCommand) Run() error {
+func (c *SyncCommand) Execute(args []string) error {
 	c.init()
 
 	for _, fn := range []string{
@@ -34,7 +31,7 @@ func (c *SyncCommand) Run() error {
 		"cert.pem",
 		"chain.pem",
 	} {
-		key := c.s3Filer.Join("aaa-data", c.Email, "domain", c.Domain, fn)
+		key := c.s3Filer.Join("aaa-data", Options.Email, "domain", c.Domain, fn)
 		blob, err := c.s3Filer.ReadFile(key)
 		if err != nil {
 			log.Printf("aaa: failed to read '%s' data from S3: %s", fn, err)

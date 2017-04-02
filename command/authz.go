@@ -13,18 +13,15 @@ import (
 )
 
 type AuthzCommand struct {
-	S3Config *S3Config
-	Email    string
-
-	Domain    string
-	Challenge string
+	Domain    string `long:"domain" description:"Domain to be authorized" required:"true"`
+	Challenge string `long:"challenge" description:"Challenge Type" default:"dns-01"`
 }
 
-func (c *AuthzCommand) Run() error {
+func (c *AuthzCommand) Execute(args []string) error {
 	// initialize S3 bucket and filer
-	s3b := bucket.New(s3.New(session.New()), c.S3Config.Bucket)
-	filer := agent.NewS3Filer(s3b, c.S3Config.KMSKeyID)
-	store, err := agent.NewStore(c.Email, filer)
+	s3b := bucket.New(s3.New(session.New()), Options.S3Bucket)
+	filer := agent.NewS3Filer(s3b, Options.S3KMSKeyID)
+	store, err := agent.NewStore(Options.Email, filer)
 	if err != nil {
 		return err
 	}

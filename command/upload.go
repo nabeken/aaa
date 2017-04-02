@@ -16,9 +16,7 @@ import (
 )
 
 type UploadCommand struct {
-	S3Config *S3Config
-	Email    string
-	Domain   string
+	Domain string `long:"domain" description:"Domain to be uploaded"`
 
 	s3Filer *agent.S3Filer
 	iamconn iamiface.IAMAPI
@@ -26,7 +24,7 @@ type UploadCommand struct {
 
 func (c *UploadCommand) init() {
 	sess := session.New()
-	s3b := bucket.New(s3.New(session.New()), c.S3Config.Bucket)
+	s3b := bucket.New(s3.New(session.New()), Options.S3Bucket)
 	c.s3Filer = agent.NewS3Filer(s3b, "")
 	c.iamconn = iam.New(sess)
 }
@@ -38,7 +36,7 @@ aws iam upload-server-certificate \
     --private-key <value> \
     --certificate-chain <value>
 */
-func (c *UploadCommand) Run() error {
+func (c *UploadCommand) Execute(args []string) error {
 	c.init()
 
 	privKey, err := c.get("privkey.pem")
@@ -79,7 +77,7 @@ func (c *UploadCommand) Run() error {
 }
 
 func (c *UploadCommand) get(key string) (string, error) {
-	fn := c.s3Filer.Join("aaa-data", c.Email, "domain", c.Domain, key)
+	fn := c.s3Filer.Join("aaa-data", Options.Email, "domain", c.Domain, key)
 	blob, err := c.s3Filer.ReadFile(fn)
 	if err != nil {
 		log.Printf("ERROR: failed to read: %s", fn)

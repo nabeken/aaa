@@ -14,19 +14,17 @@ import (
 )
 
 type LsCommand struct {
-	S3Config *S3Config
-	Email    string
-	Format   string
+	Format string `long:"format" description:"Format the output" default:"json"`
 
 	filer agent.Filer
 }
 
 func (c *LsCommand) init() {
-	s3b := bucket.New(s3.New(session.New()), c.S3Config.Bucket)
-	c.filer = agent.NewS3Filer(s3b, c.S3Config.KMSKeyID)
+	s3b := bucket.New(s3.New(session.New()), Options.S3Bucket)
+	c.filer = agent.NewS3Filer(s3b, Options.S3KMSKeyID)
 }
 
-func (c *LsCommand) Run() error {
+func (c *LsCommand) Execute(args []string) error {
 	c.init()
 
 	output, err := c.FetchData()
