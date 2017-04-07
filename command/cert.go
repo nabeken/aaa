@@ -11,16 +11,13 @@ import (
 )
 
 type CertCommand struct {
-	S3Config *S3Config
-	Email    string
-
-	CommonName string
-	Domains    []string
-	CreateKey  bool
+	CommonName string   `long:"cn" description:"CommonName to be issued"`
+	Domains    []string `long:"domain" description:"Domains to be issued as Subject Alternative Names"`
+	CreateKey  bool     `long:"create-key" description:"Create a new keypair"`
 }
 
-func (c *CertCommand) Run() error {
-	store, err := newStore(c.Email, c.S3Config)
+func (c *CertCommand) Execute(args []string) error {
+	store, err := newStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
 	if err != nil {
 		return err
 	}
