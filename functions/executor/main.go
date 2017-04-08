@@ -70,6 +70,26 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 	), nil
 }
 
+func (d *dispatcher) handleUploadCommand(arg string, slcmd *slack.Command) (string, error) {
+	svc := &command.UploadService{
+		Domain:   arg,
+		S3Bucket: options.S3Bucket,
+		Email:    options.Email,
+	}
+
+	arn, err := svc.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(
+		"@%s The certificate `%s` has been uploaded to IAM! ARN is `%s`",
+		slcmd.UserName,
+		arg,
+		arn,
+	), nil
+}
+
 func main() {
 	// initialize global command option
 	options.S3Bucket = os.Getenv("S3_BUCKET")
@@ -94,22 +114,24 @@ func main() {
 			return nil, handleError(errors.New("invalid command"))
 		}
 
-		var respStr string
+		var handler func(string, *slack.Command) (string, error)
 		switch command[0] {
 		case "cert":
-			respStr, err = dispatcher.handleCertCommand(command[1], slcmd)
+			handler = dispatcher.handleCertCommand
 		case "authz":
-			respStr, err = dispatcher.handleAuthzCommand(command[1], slcmd)
+			handler = dispatcher.handleAuthzCommand
+		case "upload":
+			handler = dispatcher.handleUploadCommand
 		}
+
+		respStr, err := handler(command[1], slcmd)
 		if err != nil {
 			return nil, handleError(err)
 		}
-
 		resp := &slack.CommandResponse{
 			ResponseType: "in_channel",
 			Text:         respStr,
 		}
-
 		return nil, slack.PostResponse(slcmd.ResponseURL, resp)
 	})
 }
