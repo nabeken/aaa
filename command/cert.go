@@ -18,13 +18,15 @@ type CertCommand struct {
 }
 
 func (c *CertCommand) Execute(args []string) error {
+	store, err := NewStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize the store")
+	}
 	return (&CertService{
 		CommonName: c.CommonName,
 		Domains:    c.Domains,
 		CreateKey:  c.CreateKey,
-		S3Bucket:   Options.S3Bucket,
-		S3KMSKeyID: Options.S3KMSKeyID,
-		Email:      Options.Email,
+		Store:      store,
 	}).Run()
 }
 
@@ -32,21 +34,14 @@ type CertService struct {
 	CommonName string
 	Domains    []string
 	CreateKey  bool
-	S3Bucket   string
-	S3KMSKeyID string
-	Email      string
+	Store      *agent.Store
 }
 
 func (svc *CertService) Run() error {
-	store, err := newStore(svc.Email, svc.S3Bucket, svc.S3KMSKeyID)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize the store")
-	}
-
 	log.Print("INFO: now issuing certificate...")
 
 	// trying to load the key
-	key, err := store.LoadCertKey(svc.CommonName)
+	key, err := svc.Store.LoadCertKey(svc.CommonName)
 	if err != nil {
 		if err != agent.ErrFileNotFound {
 			return errors.Wrap(err, "failed to load the key")
@@ -71,7 +66,7 @@ func (svc *CertService) Run() error {
 		}
 
 		// storing private key for certificate
-		if err := store.SaveCertKey(svc.CommonName, certPrivkeyJWK); err != nil {
+		if err := svc.Store.SaveCertKey(svc.CommonName, certPrivkeyJWK); err != nil {
 			return errors.Wrap(err, "failed to store the JWK")
 		}
 
@@ -98,7 +93,7 @@ func (svc *CertService) Run() error {
 	}
 
 	// initialize client here
-	client := agent.NewClient(DirectoryURL(), store)
+	client := agent.NewClient(DirectoryURL(), svc.Store)
 	if err := client.Init(); err != nil {
 		return errors.Wrap(err, "failed to initialize the client")
 	}
@@ -116,7 +111,7 @@ func (svc *CertService) Run() error {
 		return errors.Wrap(err, "failed to get the certificate")
 	}
 
-	if err := store.SaveCert(svc.CommonName, issuerCert, myCert); err != nil {
+	if err := svc.Store.SaveCert(svc.CommonName, issuerCert, myCert); err != nil {
 		return errors.Wrap(err, "failed to store the certificate")
 	}
 

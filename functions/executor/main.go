@@ -8,8 +8,12 @@ import (
 	"strings"
 
 	apex "github.com/apex/go-apex"
+	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aaa/command"
 	"github.com/nabeken/aaa/slack"
+	"github.com/nabeken/aws-go-s3/bucket"
 	"github.com/pkg/errors"
 )
 
@@ -25,12 +29,14 @@ type dispatcher struct {
 }
 
 func (d *dispatcher) handleAuthzCommand(arg string, slcmd *slack.Command) (string, error) {
+	store, err := command.NewStore(options.Email, options.S3Bucket, options.S3KMSKeyID)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to initialize the store")
+	}
 	svc := &command.AuthzService{
-		Challenge:  challengeType,
-		Domain:     arg,
-		S3Bucket:   options.S3Bucket,
-		S3KMSKeyID: options.S3KMSKeyID,
-		Email:      options.Email,
+		Challenge: challengeType,
+		Domain:    arg,
+		Store:     store,
 	}
 
 	if err := svc.Run(); err != nil {
@@ -45,15 +51,18 @@ func (d *dispatcher) handleAuthzCommand(arg string, slcmd *slack.Command) (strin
 }
 
 func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string, error) {
+	store, err := command.NewStore(options.Email, options.S3Bucket, options.S3KMSKeyID)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to initialize the store")
+	}
+
 	domains := strings.Split(arg, " ")
 	log.Println("domains:", domains)
 
 	svc := &command.CertService{
 		CommonName: domains[0],
 		Domains:    domains[1:],
-		S3Bucket:   options.S3Bucket,
-		S3KMSKeyID: options.S3KMSKeyID,
-		Email:      options.Email,
+		Store:      store,
 	}
 
 	if err := svc.Run(); err != nil {
@@ -73,10 +82,13 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 }
 
 func (d *dispatcher) handleUploadCommand(arg string, slcmd *slack.Command) (string, error) {
+	sess := command.NewAWSSession()
+	s3b := bucket.New(s3.New(sess), options.S3Bucket)
 	svc := &command.UploadService{
-		Domain:   arg,
-		S3Bucket: options.S3Bucket,
-		Email:    options.Email,
+		Domain:  arg,
+		Email:   options.Email,
+		S3Filer: agent.NewS3Filer(s3b, ""),
+		IAMconn: iam.New(sess),
 	}
 
 	arn, err := svc.Run()

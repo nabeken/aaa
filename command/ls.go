@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aws-go-s3/bucket"
@@ -19,27 +18,17 @@ type LsCommand struct {
 }
 
 func (c *LsCommand) Execute(args []string) error {
+	s3b := bucket.New(s3.New(NewAWSSession()), Options.S3Bucket)
 	return (&LsService{
-		S3Bucket:   Options.S3Bucket,
-		S3KMSKeyID: Options.S3Bucket,
+		Filer: agent.NewS3Filer(s3b, Options.S3KMSKeyID),
 	}).WriteTo(c.Format, os.Stdout)
 }
 
 type LsService struct {
-	S3Bucket   string
-	S3KMSKeyID string
-
-	filer agent.Filer
-}
-
-func (svc *LsService) init() {
-	s3b := bucket.New(s3.New(session.New()), svc.S3Bucket)
-	svc.filer = agent.NewS3Filer(s3b, svc.S3KMSKeyID)
+	Filer agent.Filer
 }
 
 func (svc *LsService) WriteTo(format string, w io.Writer) error {
-	svc.init()
-
 	output, err := svc.FetchData()
 	if err != nil {
 		return err
@@ -61,7 +50,7 @@ func (svc *LsService) FetchData() ([]Domain, error) {
 	}
 
 	for _, email := range emails {
-		store, err := agent.NewStore(email, svc.filer)
+		store, err := agent.NewStore(email, svc.Filer)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to initialize the store")
 		}
@@ -103,14 +92,14 @@ func (svc *LsService) FetchData() ([]Domain, error) {
 }
 
 func (svc *LsService) listAccounts() ([]string, error) {
-	dirs, err := svc.filer.ListDir(agent.StorePrefix)
+	dirs, err := svc.Filer.ListDir(agent.StorePrefix)
 	if err != nil {
 		return nil, err
 	}
 
 	accounts := make([]string, 0, len(dirs))
 	for _, dir := range dirs {
-		elem := svc.filer.Split(dir)
+		elem := svc.Filer.Split(dir)
 
 		// account (email) is in 2nd element
 		if len(elem) > 1 {

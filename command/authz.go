@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nabeken/aaa/agent"
-	"github.com/nabeken/aws-go-s3/bucket"
 	"github.com/pkg/errors"
 )
 
@@ -18,32 +15,25 @@ type AuthzCommand struct {
 }
 
 func (c *AuthzCommand) Execute(args []string) error {
+	// initialize S3 bucket
+	store, err := NewStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize the store")
+	}
 	return (&AuthzService{
-		Domain:     c.Domain,
-		Challenge:  c.Challenge,
-		S3Bucket:   Options.S3Bucket,
-		S3KMSKeyID: Options.S3KMSKeyID,
-		Email:      Options.Email,
+		Domain:    c.Domain,
+		Challenge: c.Challenge,
+		Store:     store,
 	}).Run()
 }
 
 type AuthzService struct {
-	Domain     string
-	Challenge  string
-	S3Bucket   string
-	S3KMSKeyID string
-	Email      string
+	Domain    string
+	Challenge string
+	Store     *agent.Store
 }
 
 func (svc *AuthzService) Run() error {
-	// initialize S3 bucket and filer
-	s3b := bucket.New(s3.New(session.New()), svc.S3Bucket)
-	filer := agent.NewS3Filer(s3b, svc.S3KMSKeyID)
-	store, err := agent.NewStore(svc.Email, filer)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize the store")
-	}
-
 	log.Printf("INFO: start authorization for %s with %s", svc.Domain, svc.Challenge)
 
 	newAuthzReq := &agent.NewAuthorizationRequest{
@@ -54,7 +44,7 @@ func (svc *AuthzService) Run() error {
 	}
 
 	// initialize client here
-	client := agent.NewClient(DirectoryURL(), store)
+	client := agent.NewClient(DirectoryURL(), svc.Store)
 	if err := client.Init(); err != nil {
 		return errors.Wrap(err, "failed to initialize the client")
 	}
@@ -76,14 +66,14 @@ func (svc *AuthzService) Run() error {
 			return errors.New("aaa: no DNS challenge and its combination found")
 		}
 
-		r53 := agent.NewRoute53Provider(route53.New(session.New()))
+		r53 := agent.NewRoute53Provider(route53.New(NewAWSSession()))
 		challenge = dnsChallenge
 		challengeSolver = agent.NewDNSChallengeSolver(r53, dnsChallenge, svc.Domain)
 	default:
 		return fmt.Errorf("aaa: challenge %s is not supported")
 	}
 
-	publicKey, err := store.LoadPublicKey()
+	publicKey, err := svc.Store.LoadPublicKey()
 	if err != nil {
 		return errors.Wrap(err, "failed to load the public key")
 	}
@@ -118,7 +108,7 @@ func (svc *AuthzService) Run() error {
 		return errors.Wrap(err, "failed to get authorization")
 	}
 
-	if err := store.SaveAuthorization(currentAuthz); err != nil {
+	if err := svc.Store.SaveAuthorization(currentAuthz); err != nil {
 		return errors.Wrap(err, "failed to save the authorization in the store")
 	}
 

@@ -16,7 +16,7 @@ type RegCommand struct {
 
 func (c *RegCommand) Execute(args []string) error {
 	// initialize S3 bucket and filer
-	store, err := newStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
+	store, err := NewStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
 	if err != nil {
 		return err
 	}

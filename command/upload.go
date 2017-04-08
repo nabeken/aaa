@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -17,12 +16,11 @@ import (
 )
 
 type UploadService struct {
-	Domain   string
-	S3Bucket string
-	Email    string
+	Domain string
+	Email  string
 
-	s3Filer *agent.S3Filer
-	iamconn iamiface.IAMAPI
+	S3Filer *agent.S3Filer
+	IAMconn iamiface.IAMAPI
 }
 
 /*
@@ -33,16 +31,9 @@ aws iam upload-server-certificate \
     --certificate-chain <value>
 */
 
-func (svc *UploadService) init() {
-	sess := session.New()
-	s3b := bucket.New(s3.New(session.New()), svc.S3Bucket)
-	svc.s3Filer = agent.NewS3Filer(s3b, "")
-	svc.iamconn = iam.New(sess)
-}
-
 func (svc *UploadService) get(key string) (string, error) {
-	fn := svc.s3Filer.Join("aaa-data", svc.Email, "domain", svc.Domain, key)
-	blob, err := svc.s3Filer.ReadFile(fn)
+	fn := svc.S3Filer.Join("aaa-data", svc.Email, "domain", svc.Domain, key)
+	blob, err := svc.S3Filer.ReadFile(fn)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to read '%s'", fn)
 	}
@@ -75,14 +66,12 @@ func (svc *UploadService) buildUploadInput() (*iam.UploadServerCertificateInput,
 }
 
 func (svc *UploadService) Run() (string, error) {
-	svc.init()
-
 	req, err := svc.buildUploadInput()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build a upload request")
 	}
 
-	resp, err := svc.iamconn.UploadServerCertificate(req)
+	resp, err := svc.IAMconn.UploadServerCertificate(req)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to upload to IAM")
 	}
@@ -95,10 +84,13 @@ type UploadCommand struct {
 }
 
 func (c *UploadCommand) Execute(args []string) error {
+	sess := NewAWSSession()
+	s3b := bucket.New(s3.New(sess), Options.S3Bucket)
 	arn, err := (&UploadService{
-		Domain:   c.Domain,
-		S3Bucket: Options.S3Bucket,
-		Email:    Options.Email,
+		Domain:  c.Domain,
+		Email:   Options.Email,
+		S3Filer: agent.NewS3Filer(s3b, ""),
+		IAMconn: iam.New(sess),
 	}).Run()
 	if err != nil {
 		return err
