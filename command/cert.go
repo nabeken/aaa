@@ -45,9 +45,19 @@ func (svc *CertService) Run() error {
 
 	log.Print("INFO: now issuing certificate...")
 
-	var privateKey *rsa.PrivateKey
+	// trying to load the key
+	key, err := store.LoadCertKey(svc.CommonName)
+	if err != nil {
+		if err != agent.ErrFileNotFound {
+			return errors.Wrap(err, "failed to load the key")
+		}
+
+		// we have to create a new keypair anyway
+		svc.CreateKey = true
+	}
 
 	// Creating private key for cert
+	var privateKey *rsa.PrivateKey
 	if svc.CreateKey {
 		log.Print("INFO: creating new private key...")
 		certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -67,12 +77,7 @@ func (svc *CertService) Run() error {
 
 		privateKey = certPrivkey
 	} else {
-		log.Print("INFO: loading existing private key...")
-		key, err := store.LoadCertKey(svc.CommonName)
-		if err != nil {
-			return errors.Wrap(err, "failed to load the key")
-		}
-
+		log.Print("INFO: using the existing private key...")
 		pkey, err := key.Materialize()
 		if err != nil {
 			return errors.Wrap(err, "failed to materialize the key")

@@ -62,10 +62,12 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 
 	return fmt.Sprintf(
 		"@%s The certificate for %s is now available!\n```\n"+
-			"aws s3 sync s3://%s/aaa-data/%s/domain/%s %s```",
+			"aws s3 sync s3://%s/aaa-data/%s/domain/%s/ %s```",
 		slcmd.UserName,
 		domains,
 		options.S3Bucket,
+		options.Email,
+		svc.CommonName,
 		svc.CommonName,
 	), nil
 }
