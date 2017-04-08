@@ -1,0 +1,15 @@
+{
+  "name": "aaa",
+  "description": "AAA",
+  "memory": 128,
+  "timeout": 120,
+  "role": "<YOUR_LAMBDA_IAM_ROLE_ARN_HERE>",
+  "environment": {
+    "SLACK_TOKEN": "<TOKEN>",
+    "AAA_EXECUTOR_FUNC_NAME": "aaa_executor",
+    "S3_BUCKET": "<S3_BUCKET>",
+    "KMS_KEY_ID": "<KMS_KEY_ID>",
+    "EMAIL": "<EMAIL>",
+    "AAA_DIRECTORY_URL": "https://acme-v01.api.letsencrypt.org/directory"
+  }
+}

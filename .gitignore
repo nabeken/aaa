@@ -34,3 +34,5 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+project.json

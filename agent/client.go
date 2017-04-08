@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"github.com/lestrrat/go-jwx/jwa"
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/lestrrat/go-jwx/jws"
+	"github.com/pkg/errors"
 	"github.com/tent/http-link-go"
 )
 
@@ -139,13 +139,13 @@ func NewClient(dirURL string, store *Store) *Client {
 func (c *Client) Init() error {
 	privateKey, err := c.store.LoadPrivateKey()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to load the private key")
 	}
 	c.privateKey = privateKey
 
 	privkey, err := privateKey.Materialize()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to materialize the private key")
 	}
 
 	rsaPrivKey, ok := privkey.(*rsa.PrivateKey)
@@ -155,25 +155,25 @@ func (c *Client) Init() error {
 
 	publicKey, err := c.store.LoadPublicKey()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to load the private key")
 	}
 	c.publicKey = publicKey
 
 	rsaSigner, err := jws.NewRsaSign(jwa.RS256, rsaPrivKey)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create a signer instance")
 	}
 
 	c.signer = jws.NewSigner(rsaSigner)
 	for _, s := range c.signer.Signers {
 		if err := s.PublicHeaders().Set("jwk", publicKey); err != nil {
-			return nil
+			return errors.Wrap(err, "failed to set the public key")
 		}
 	}
 
 	resp, err := c.httpClient.Get(c.directoryURL)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get from the directory")
 	}
 	defer resp.Body.Close()
 	c.updateNonce(resp)
@@ -184,7 +184,7 @@ func (c *Client) Init() error {
 
 	dir := &directory{}
 	if err := json.NewDecoder(resp.Body).Decode(dir); err != nil {
-		return err
+		return errors.Wrap(err, "failed to decode into JSON")
 	}
 	c.directory = dir
 
