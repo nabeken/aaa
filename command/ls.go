@@ -2,7 +2,7 @@ package command
 
 import (
 	"encoding/json"
-	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -11,56 +11,64 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aws-go-s3/bucket"
+	"github.com/pkg/errors"
 )
 
 type LsCommand struct {
 	Format string `long:"format" description:"Format the output" default:"json"`
+}
+
+func (c *LsCommand) Execute(args []string) error {
+	return (&LsService{
+		S3Bucket:   Options.S3Bucket,
+		S3KMSKeyID: Options.S3Bucket,
+	}).WriteTo(c.Format, os.Stdout)
+}
+
+type LsService struct {
+	S3Bucket   string
+	S3KMSKeyID string
 
 	filer agent.Filer
 }
 
-func (c *LsCommand) init() {
-	s3b := bucket.New(s3.New(session.New()), Options.S3Bucket)
-	c.filer = agent.NewS3Filer(s3b, Options.S3KMSKeyID)
+func (svc *LsService) init() {
+	s3b := bucket.New(s3.New(session.New()), svc.S3Bucket)
+	svc.filer = agent.NewS3Filer(s3b, svc.S3KMSKeyID)
 }
 
-func (c *LsCommand) Execute(args []string) error {
-	c.init()
+func (svc *LsService) WriteTo(format string, w io.Writer) error {
+	svc.init()
 
-	output, err := c.FetchData()
+	output, err := svc.FetchData()
 	if err != nil {
 		return err
 	}
-
-	switch c.Format {
+	switch format {
 	case "json":
-		if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
-			return err
-		}
+		return json.NewEncoder(w).Encode(output)
 	default:
-		fmt.Println("NOT IMPLEMENTED")
+		return errors.Errorf("'%s' is not implemented")
 	}
-
-	return nil
 }
 
-func (c *LsCommand) FetchData() ([]domain, error) {
-	data := []domain{}
+func (svc *LsService) FetchData() ([]Domain, error) {
+	data := []Domain{}
 
-	emails, err := c.ListAccounts()
+	emails, err := svc.listAccounts()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to list the accounts")
 	}
 
 	for _, email := range emails {
-		store, err := agent.NewStore(email, c.filer)
+		store, err := agent.NewStore(email, svc.filer)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to initialize the store")
 		}
 
 		domains, err := store.ListDomains()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to list the domains")
 		}
 
 		for _, dom := range domains {
@@ -76,13 +84,13 @@ func (c *LsCommand) FetchData() ([]domain, error) {
 				continue
 			}
 
-			data = append(data, domain{
+			data = append(data, Domain{
 				Email:  email,
 				Domain: dom,
-				Authorization: authorization{
+				Authorization: Authorization{
 					Expires: authz.GetExpires(),
 				},
-				Certificate: certificate{
+				Certificate: Certificate{
 					NotBefore: cert.NotBefore,
 					NotAfter:  cert.NotAfter,
 					SAN:       cert.DNSNames,
@@ -94,15 +102,15 @@ func (c *LsCommand) FetchData() ([]domain, error) {
 	return data, nil
 }
 
-func (c *LsCommand) ListAccounts() ([]string, error) {
-	dirs, err := c.filer.ListDir(agent.StorePrefix)
+func (svc *LsService) listAccounts() ([]string, error) {
+	dirs, err := svc.filer.ListDir(agent.StorePrefix)
 	if err != nil {
 		return nil, err
 	}
 
 	accounts := make([]string, 0, len(dirs))
 	for _, dir := range dirs {
-		elem := c.filer.Split(dir)
+		elem := svc.filer.Split(dir)
 
 		// account (email) is in 2nd element
 		if len(elem) > 1 {
@@ -113,18 +121,18 @@ func (c *LsCommand) ListAccounts() ([]string, error) {
 	return accounts, nil
 }
 
-type domain struct {
+type Domain struct {
 	Email         string        `json:"email"`
 	Domain        string        `json:"domain"`
-	Authorization authorization `json:"authorization"`
-	Certificate   certificate   `json:"certificate"`
+	Authorization Authorization `json:"authorization"`
+	Certificate   Certificate   `json:"certificate"`
 }
 
-type authorization struct {
+type Authorization struct {
 	Expires time.Time `json:"expires"`
 }
 
-type certificate struct {
+type Certificate struct {
 	NotBefore time.Time `json:"not_before"`
 	NotAfter  time.Time `json:"not_after"`
 	SAN       []string  `json:"san"`
