@@ -15,16 +15,25 @@ import (
 
 const challengeType = "dns-01"
 
+var options struct {
+	S3Bucket   string
+	S3KMSKeyID string
+	Email      string
+}
+
 type dispatcher struct {
 }
 
 func (d *dispatcher) handleAuthzCommand(arg string, slcmd *slack.Command) (string, error) {
-	cmd := &command.AuthzCommand{
-		Challenge: challengeType,
-		Domain:    arg,
+	svc := &command.AuthzService{
+		Challenge:  challengeType,
+		Domain:     arg,
+		S3Bucket:   options.S3Bucket,
+		S3KMSKeyID: options.S3KMSKeyID,
+		Email:      options.Email,
 	}
 
-	if err := cmd.Execute(nil); err != nil {
+	if err := svc.Run(); err != nil {
 		return "", err
 	}
 
@@ -36,15 +45,18 @@ func (d *dispatcher) handleAuthzCommand(arg string, slcmd *slack.Command) (strin
 }
 
 func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string, error) {
-	cmd := &command.CertCommand{}
-
 	domains := strings.Split(arg, " ")
 	log.Println("domains:", domains)
 
-	cmd.CommonName = domains[0]
-	cmd.Domains = domains[1:]
+	svc := &command.CertService{
+		CommonName: domains[0],
+		Domains:    domains[1:],
+		S3Bucket:   options.S3Bucket,
+		S3KMSKeyID: options.S3KMSKeyID,
+		Email:      options.Email,
+	}
 
-	if err := cmd.Execute(nil); err != nil {
+	if err := svc.Run(); err != nil {
 		return "", err
 	}
 
@@ -53,16 +65,16 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 			"aws s3 sync s3://%s/aaa-data/%s/domain/%s %s```",
 		slcmd.UserName,
 		domains,
-		command.Options.S3Bucket,
-		cmd.CommonName,
+		options.S3Bucket,
+		svc.CommonName,
 	), nil
 }
 
 func main() {
 	// initialize global command option
-	command.Options.S3Bucket = os.Getenv("S3_BUCKET")
-	command.Options.S3KMSKeyID = os.Getenv("KMS_KEY_ID")
-	command.Options.Email = os.Getenv("EMAIL")
+	options.S3Bucket = os.Getenv("S3_BUCKET")
+	options.S3KMSKeyID = os.Getenv("KMS_KEY_ID")
+	options.Email = os.Getenv("EMAIL")
 
 	dispatcher := &dispatcher{}
 

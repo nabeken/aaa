@@ -8,6 +8,7 @@ import (
 
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/nabeken/aaa/agent"
+	"github.com/pkg/errors"
 )
 
 type CertCommand struct {
@@ -17,9 +18,29 @@ type CertCommand struct {
 }
 
 func (c *CertCommand) Execute(args []string) error {
-	store, err := newStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
+	return (&CertService{
+		CommonName: c.CommonName,
+		Domains:    c.Domains,
+		CreateKey:  c.CreateKey,
+		S3Bucket:   Options.S3Bucket,
+		S3KMSKeyID: Options.S3KMSKeyID,
+		Email:      Options.Email,
+	}).Run()
+}
+
+type CertService struct {
+	CommonName string
+	Domains    []string
+	CreateKey  bool
+	S3Bucket   string
+	S3KMSKeyID string
+	Email      string
+}
+
+func (svc *CertService) Run() error {
+	store, err := newStore(svc.Email, svc.S3Bucket, svc.S3KMSKeyID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to initialize the store")
 	}
 
 	log.Print("INFO: now issuing certificate...")
@@ -27,34 +48,34 @@ func (c *CertCommand) Execute(args []string) error {
 	var privateKey *rsa.PrivateKey
 
 	// Creating private key for cert
-	if c.CreateKey {
+	if svc.CreateKey {
 		log.Print("INFO: creating new private key...")
 		certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to generate a keypair")
 		}
 
 		certPrivkeyJWK, err := jwk.NewRsaPrivateKey(certPrivkey)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to create a JWK")
 		}
 
 		// storing private key for certificate
-		if err := store.SaveCertKey(c.CommonName, certPrivkeyJWK); err != nil {
-			return err
+		if err := store.SaveCertKey(svc.CommonName, certPrivkeyJWK); err != nil {
+			return errors.Wrap(err, "failed to store the JWK")
 		}
 
 		privateKey = certPrivkey
 	} else {
 		log.Print("INFO: loading existing private key...")
-		key, err := store.LoadCertKey(c.CommonName)
+		key, err := store.LoadCertKey(svc.CommonName)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to load the key")
 		}
 
 		pkey, err := key.Materialize()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to materialize the key")
 		}
 
 		rsaPrivKey, ok := pkey.(*rsa.PrivateKey)
@@ -66,32 +87,32 @@ func (c *CertCommand) Execute(args []string) error {
 	}
 
 	// Creating CSR
-	der, err := agent.CreateCertificateRequest(privateKey, c.CommonName, c.Domains...)
+	der, err := agent.CreateCertificateRequest(privateKey, svc.CommonName, svc.Domains...)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create a CSR")
 	}
 
 	// initialize client here
 	client := agent.NewClient(DirectoryURL(), store)
 	if err := client.Init(); err != nil {
-		return err
+		return errors.Wrap(err, "failed to initialize the client")
 	}
 
 	// Issue new-cert request
 	certURL, err := client.NewCertificate(der)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to issue the certificate")
 	}
 
 	log.Printf("INFO: certificate will be available at %s", certURL)
 
 	issuerCert, myCert, err := client.GetCertificate(certURL)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get the certificate")
 	}
 
-	if err := store.SaveCert(c.CommonName, issuerCert, myCert); err != nil {
-		return err
+	if err := store.SaveCert(svc.CommonName, issuerCert, myCert); err != nil {
+		return errors.Wrap(err, "failed to store the certificate")
 	}
 
 	log.Print("INFO: certificate is successfully saved")

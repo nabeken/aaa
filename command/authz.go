@@ -18,20 +18,38 @@ type AuthzCommand struct {
 }
 
 func (c *AuthzCommand) Execute(args []string) error {
+	return (&AuthzService{
+		Domain:     c.Domain,
+		Challenge:  c.Challenge,
+		S3Bucket:   Options.S3Bucket,
+		S3KMSKeyID: Options.S3KMSKeyID,
+		Email:      Options.Email,
+	}).Run()
+}
+
+type AuthzService struct {
+	Domain     string
+	Challenge  string
+	S3Bucket   string
+	S3KMSKeyID string
+	Email      string
+}
+
+func (svc *AuthzService) Run() error {
 	// initialize S3 bucket and filer
-	s3b := bucket.New(s3.New(session.New()), Options.S3Bucket)
-	filer := agent.NewS3Filer(s3b, Options.S3KMSKeyID)
-	store, err := agent.NewStore(Options.Email, filer)
+	s3b := bucket.New(s3.New(session.New()), svc.S3Bucket)
+	filer := agent.NewS3Filer(s3b, svc.S3KMSKeyID)
+	store, err := agent.NewStore(svc.Email, filer)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize the store")
 	}
 
-	log.Printf("INFO: start authorization for %s with %s", c.Domain, c.Challenge)
+	log.Printf("INFO: start authorization for %s with %s", svc.Domain, svc.Challenge)
 
 	newAuthzReq := &agent.NewAuthorizationRequest{
 		Identifier: &agent.Identifier{
 			Type:  "dns",
-			Value: c.Domain,
+			Value: svc.Domain,
 		},
 	}
 
@@ -51,7 +69,7 @@ func (c *AuthzCommand) Execute(args []string) error {
 	var challenge agent.Challenge
 	var challengeSolver agent.ChallengeSolver
 
-	switch c.Challenge {
+	switch svc.Challenge {
 	case "dns-01":
 		dnsChallenge, found := agent.FindDNSChallenge(authzResp)
 		if !found {
@@ -60,7 +78,7 @@ func (c *AuthzCommand) Execute(args []string) error {
 
 		r53 := agent.NewRoute53Provider(route53.New(session.New()))
 		challenge = dnsChallenge
-		challengeSolver = agent.NewDNSChallengeSolver(r53, dnsChallenge, c.Domain)
+		challengeSolver = agent.NewDNSChallengeSolver(r53, dnsChallenge, svc.Domain)
 	default:
 		return fmt.Errorf("aaa: challenge %s is not supported")
 	}
