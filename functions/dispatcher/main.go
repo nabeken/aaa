@@ -43,9 +43,11 @@ func main() {
 			return nil, errors.Wrap(err, "failed to invoke the executor")
 		}
 
-		return &slack.CommandResponse{
+		resp := &slack.CommandResponse{
 			ResponseType: "in_channel",
-			Text:         fmt.Sprintf("<@%s> Your request has been accepted.", slcmd.UserName),
-		}, nil
+			Text:         fmt.Sprintf("%s Your request has been accepted.", slack.FormatUserName(slcmd.UserName)),
+		}
+
+		return resp, nil
 	})
 }

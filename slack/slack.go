@@ -77,7 +77,16 @@ func PostResponse(respURL string, cmdResp *CommandResponse) error {
 func PostErrorResponse(err error, slcmd *Command) error {
 	resp := &CommandResponse{
 		ResponseType: "in_channel",
-		Text:         fmt.Sprintf("@%s ERROR: `%s`", slcmd.UserName, err),
+		Text:         fmt.Sprintf("%s ERROR: `%s`", FormatUserName(slcmd.UserName), err),
 	}
 	return PostResponse(slcmd.ResponseURL, resp)
+}
+
+// https://api.slack.com/docs/message-formatting#linking_to_channels_and_users
+func FormatUserName(name string) string {
+	switch name {
+	case "here", "channel":
+		return "<!" + name + ">"
+	}
+	return "<@" + name + ">"
 }
