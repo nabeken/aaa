@@ -44,7 +44,7 @@ func (d *dispatcher) handleAuthzCommand(arg string, slcmd *slack.Command) (strin
 	}
 
 	return fmt.Sprintf(
-		"@%s The authorization for %s has been renewed.",
+		"<@%s> The authorization for %s has been renewed.",
 		slcmd.UserName,
 		arg,
 	), nil
@@ -70,7 +70,7 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 	}
 
 	return fmt.Sprintf(
-		"@%s The certificate for %s is now available!\n```\n"+
+		"<@%s> The certificate for %s is now available!\n```\n"+
 			"aws s3 sync s3://%s/aaa-data/%s/domain/%s/ %s```",
 		slcmd.UserName,
 		domains,
@@ -97,7 +97,7 @@ func (d *dispatcher) handleUploadCommand(arg string, slcmd *slack.Command) (stri
 	}
 
 	return fmt.Sprintf(
-		"@%s The certificate `%s` has been uploaded to IAM! ARN is `%s`",
+		"<@%s> The certificate `%s` has been uploaded to IAM! ARN is `%s`",
 		slcmd.UserName,
 		arg,
 		arn,

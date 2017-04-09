@@ -45,7 +45,7 @@ func main() {
 
 		return &slack.CommandResponse{
 			ResponseType: "in_channel",
-			Text:         fmt.Sprintf("@%s Your request has been accepted.", slcmd.UserName),
+			Text:         fmt.Sprintf("<@%s> Your request has been accepted.", slcmd.UserName),
 		}, nil
 	})
 }
