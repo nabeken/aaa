@@ -304,7 +304,8 @@ Finally, you can fill the URL in `Integration Settings`.
 
 ## Automatic renewal
 
-TBD
+You can invoke `aaa_scheduler` lambda function by CloudWatch Events.
+The scheduler will invoke the executor lambda function when a domain requires authz or cert renewal 30 days before it expires.
 
 ## Integrated libraries
 
