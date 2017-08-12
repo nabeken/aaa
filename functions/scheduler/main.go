@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	apex "github.com/apex/go-apex"
@@ -58,7 +59,8 @@ func main() {
 				continue
 			}
 			if domain.Certificate.NotAfter.Before(renewalDate) {
-				renewCommands = append(renewCommands, "cert "+domain.Domain)
+				// we want to have cert with SAN
+				renewCommands = append(renewCommands, "cert "+strings.Join(domain.Certificate.SAN, " "))
 			}
 		}
 
