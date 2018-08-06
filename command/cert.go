@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/nabeken/aaa/agent"
@@ -15,6 +16,7 @@ type CertCommand struct {
 	CommonName string   `long:"cn" description:"CommonName to be issued"`
 	Domains    []string `long:"domain" description:"Domains to be issued as Subject Alternative Names"`
 	CreateKey  bool     `long:"create-key" description:"Create a new keypair"`
+	RSAKeySize string   `long:"rsa-key-size" description:"Size of the RSA key, only used if create-key is specified. (default: 4096, allowed: 2048 / 4096)"`
 }
 
 func (c *CertCommand) Execute(args []string) error {
@@ -22,10 +24,23 @@ func (c *CertCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize the store")
 	}
+	var keyLength int
+	if c.RSAKeySize != "" {
+		keyLengthInt, err := strconv.Atoi(c.RSAKeySize)
+		if err != nil {
+			return errors.Wrap(err, "RSA key length is not a number")
+		}
+		if keyLengthInt == 2048 || keyLengthInt == 4096 {
+			keyLength = keyLengthInt
+		} else {
+			return fmt.Errorf("Specified RSA key length is not 2048 or 4096, but %d", keyLengthInt)
+		}
+	}
 	return (&CertService{
 		CommonName: c.CommonName,
 		Domains:    c.Domains,
 		CreateKey:  c.CreateKey,
+		RSAKeySize: keyLength,
 		Store:      store,
 	}).Run()
 }
@@ -34,6 +49,7 @@ type CertService struct {
 	CommonName string
 	Domains    []string
 	CreateKey  bool
+	RSAKeySize int
 	Store      *agent.Store
 }
 
@@ -55,7 +71,13 @@ func (svc *CertService) Run() error {
 	var privateKey *rsa.PrivateKey
 	if svc.CreateKey {
 		log.Print("INFO: creating new private key...")
-		certPrivkey, err := rsa.GenerateKey(rand.Reader, 4096)
+		var RSAKeySize int
+		if svc.RSAKeySize == 0 {
+			RSAKeySize = 4096
+		} else {
+			RSAKeySize = svc.RSAKeySize
+		}
+		certPrivkey, err := rsa.GenerateKey(rand.Reader, RSAKeySize)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate a keypair")
 		}
