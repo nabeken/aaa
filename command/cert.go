@@ -24,7 +24,7 @@ func (c *CertCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize the store")
 	}
-	keyLength := 4096
+	var keyLength int
 	if c.RSAKeySize != "" {
 		keyLengthInt, err := strconv.Atoi(c.RSAKeySize)
 		if err != nil {
@@ -71,7 +71,13 @@ func (svc *CertService) Run() error {
 	var privateKey *rsa.PrivateKey
 	if svc.CreateKey {
 		log.Print("INFO: creating new private key...")
-		certPrivkey, err := rsa.GenerateKey(rand.Reader, svc.RSAKeySize)
+		var RSAKeySize int
+		if svc.RSAKeySize == 0 {
+			RSAKeySize = 4096
+		} else {
+			RSAKeySize = svc.RSAKeySize
+		}
+		certPrivkey, err := rsa.GenerateKey(rand.Reader, RSAKeySize)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate a keypair")
 		}
