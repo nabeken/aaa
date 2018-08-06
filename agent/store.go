@@ -92,7 +92,7 @@ func (s *Store) LoadPublicKey() (jwk.Key, error) {
 	}
 
 	// restore its public key from the private key
-	return jwk.NewRsaPublicKey(&rsaPrivKey.PublicKey)
+	return jwk.New(&rsaPrivKey.PublicKey)
 }
 
 func (s *Store) SaveKey(privateKey jwk.Key) error {
@@ -134,7 +134,7 @@ func (s *Store) LoadCertKey(domain string) (jwk.Key, error) {
 		return nil, err
 	}
 
-	return jwk.NewRsaPrivateKey(key)
+	return jwk.New(key)
 }
 
 func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {

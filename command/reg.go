@@ -30,7 +30,7 @@ func (c *RegCommand) Execute(args []string) error {
 			return err
 		}
 
-		privateKey, err := jwk.NewRsaPrivateKey(privkey)
+		privateKey, err := jwk.New(privkey)
 		if err != nil {
 			return err
 		}
@@ -39,7 +39,7 @@ func (c *RegCommand) Execute(args []string) error {
 			return err
 		}
 
-		key, err = jwk.NewRsaPublicKey(&privkey.PublicKey)
+		key, err = jwk.New(&privkey.PublicKey)
 		if err != nil {
 			return err
 		}

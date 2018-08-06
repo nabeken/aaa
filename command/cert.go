@@ -82,7 +82,7 @@ func (svc *CertService) Run() error {
 			return errors.Wrap(err, "failed to generate a keypair")
 		}
 
-		certPrivkeyJWK, err := jwk.NewRsaPrivateKey(certPrivkey)
+		certPrivkeyJWK, err := jwk.New(certPrivkey)
 		if err != nil {
 			return errors.Wrap(err, "failed to create a JWK")
 		}
