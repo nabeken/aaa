@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"crypto"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -15,6 +14,7 @@ import (
 	"github.com/lestrrat/go-jwx/jwa"
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/lestrrat/go-jwx/jws"
+	"github.com/lestrrat/go-jwx/jws/sign"
 	"github.com/pkg/errors"
 	"github.com/tent/http-link-go"
 )
@@ -73,7 +73,7 @@ type NewRegistrationRequest struct {
 }
 
 type UpdateRegistrationRequest struct {
-	Key       jwk.Key  `json:"key",omitempty`
+	Key       jwk.Key  `json:"key,omitempty`
 	Contact   []string `json:"contact"`
 	Agreement string   `json:"agreement,omitempty"`
 }
@@ -114,11 +114,12 @@ type Identifier struct {
 type Client struct {
 	httpClient *http.Client
 
-	store  *Store
-	signer *jws.MultiSign
+	store *Store
 
-	privateKey jwk.Key
-	publicKey  jwk.Key
+	signer      sign.Signer
+	privateKey  interface{}
+	pubHeaders  jws.Headers
+	privHeaders jws.Headers
 
 	directoryURL string
 	directory    *directory
@@ -134,42 +135,34 @@ func NewClient(dirURL string, store *Store) *Client {
 	}
 }
 
-// init initialize ACME client. It fetch the directory resource and also update
+// init initialize ACME client. It fetches the directory resource and also updates
 // nonce internally.
 func (c *Client) Init() error {
 	privateKey, err := c.store.LoadPrivateKey()
 	if err != nil {
 		return errors.Wrap(err, "failed to load the private key")
 	}
-	c.privateKey = privateKey
-
 	privkey, err := privateKey.Materialize()
 	if err != nil {
 		return errors.Wrap(err, "failed to materialize the private key")
 	}
-
-	rsaPrivKey, ok := privkey.(*rsa.PrivateKey)
-	if !ok {
-		return fmt.Errorf("aaa: key is not *rsa.PrivateKey but %v", privkey)
-	}
+	c.privateKey = privkey
 
 	publicKey, err := c.store.LoadPublicKey()
 	if err != nil {
-		return errors.Wrap(err, "failed to load the private key")
+		return errors.Wrap(err, "failed to load the public key")
 	}
-	c.publicKey = publicKey
 
-	rsaSigner, err := jws.NewRsaSign(jwa.RS256, rsaPrivKey)
+	signer, err := sign.New(jwa.RS256)
 	if err != nil {
-		return errors.Wrap(err, "failed to create a signer instance")
+		return errors.Wrap(err, "failed to initialize a signer")
 	}
+	c.signer = signer
 
-	c.signer = jws.NewSigner(rsaSigner)
-	for _, s := range c.signer.Signers {
-		if err := s.PublicHeaders().Set("jwk", publicKey); err != nil {
-			return errors.Wrap(err, "failed to set the public key")
-		}
-	}
+	c.pubHeaders = &jws.StandardHeaders{}
+	c.pubHeaders.Set(jws.JWKKey, publicKey)
+	c.privHeaders = &jws.StandardHeaders{}
+	c.privHeaders.Set(jws.JWKKey, publicKey)
 
 	resp, err := c.httpClient.Get(c.directoryURL)
 	if err != nil {
@@ -192,12 +185,12 @@ func (c *Client) Init() error {
 }
 
 func (c *Client) sign(payload []byte) ([]byte, error) {
-	msg, err := c.signer.Sign(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	return jws.JSONSerialize{}.Serialize(msg)
+	bytes, err := jws.SignMulti(
+		payload,
+		jws.WithSigner(c.signer, c.privateKey, c.pubHeaders, c.privHeaders),
+	)
+	Debug(string(bytes))
+	return bytes, err
 }
 
 // Register do new-registration.
@@ -533,9 +526,7 @@ func (c *Client) SolveChallenge(challenge Challenge, keyAuthz string) error {
 }
 
 func (c *Client) updateNonce(resp *http.Response) {
-	for _, signer := range c.signer.Signers {
-		signer.ProtectedHeaders().Set("nonce", resp.Header.Get("Replay-Nonce"))
-	}
+	c.privHeaders.Set("nonce", resp.Header.Get("Replay-Nonce"))
 }
 
 func FindLinkByName(resp *http.Response, name string) (link.Link, error) {

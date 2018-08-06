@@ -10,6 +10,7 @@ import (
 	apex "github.com/apex/go-apex"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
+	flags "github.com/jessevdk/go-flags"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aaa/command"
 	"github.com/nabeken/aaa/slack"
@@ -56,12 +57,26 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 		return "", errors.Wrap(err, "failed to initialize the store")
 	}
 
-	domains := strings.Split(arg, " ")
+	// opts is a subset of command.CertCommand.
+	var opts struct {
+		CreateKey  bool `long:"create-key"`
+		RSAKeySize int  `long:"rsa-key-size" default:"4096"`
+	}
+	domains, err := flags.ParseArgs(&opts, strings.Split(arg, " "))
+	if err != nil {
+		return "", err
+	}
+
 	log.Println("domains:", domains)
 
+	// How to execute in Slack:
+	// /letsencrypt [command] [domains...] [optional_arguments]
+	// For example: /letsencrypt cert foo.bar.com --create-key --rsa-key-size 2048
 	svc := &command.CertService{
 		CommonName: domains[0],
 		Domains:    domains[1:],
+		CreateKey:  opts.CreateKey,
+		RSAKeySize: opts.RSAKeySize,
 		Store:      store,
 	}
 
