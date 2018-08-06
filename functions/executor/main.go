@@ -10,6 +10,7 @@ import (
 	apex "github.com/apex/go-apex"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
+	flags "github.com/jessevdk/go-flags"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aaa/command"
 	"github.com/nabeken/aaa/slack"
@@ -56,57 +57,26 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 		return "", errors.Wrap(err, "failed to initialize the store")
 	}
 
-	argEntities := strings.Split(arg, " ")
-	log.Println("Argument entities:", argEntities)
+	// opts is a subset of command.CertCommand.
+	var opts struct {
+		CreateKey  bool `long:"create-key"`
+		RSAKeySize int  `long:"rsa-key-size" default:"4096"`
+	}
+	domains, err := flags.ParseArgs(&opts, strings.Split(arg, " "))
+	if err != nil {
+		return "", err
+	}
+
+	log.Println("domains:", domains)
 
 	// How to execute in Slack:
 	// /letsencrypt [command] [domains...] [optional_arguments]
-	// For example: /letsencrypt cert foo.bar.com create-key true rsa-key-size 4096
-	var domains []string
-	var createKey bool
-	var rsaKeySize int
-
-	optionalArguments := false
-	currentIndex := 0
-	for currentIndex < len(argEntities) {
-		switch argEntity := argEntities[currentIndex]; argEntity {
-		case "create-key":
-			if currentIndex == len(argEntities)-1 {
-				return "", errors.New("create-key argument requires true as a value (default: false)")
-			}
-			currentIndex += 1 // Check value
-			if argEntities[currentIndex] == "true" {
-				createKey = true
-			}
-			optionalArguments = true // Disallow domains... after optional_arguments
-		case "rsa-key-size":
-			if currentIndex == len(argEntities)-1 {
-				return "", errors.New("rsa-key-size argument requires a number as a value")
-			}
-			currentIndex += 1 // Check value
-			if argEntities[currentIndex] == "2048" {
-				rsaKeySize = 2048
-			} else if argEntities[currentIndex] == "4096" {
-				rsaKeySize = 4096
-			} else {
-				return "", errors.New("rsa-key-size argument currently only accepts 2048 / 4096 as a value")
-			}
-			optionalArguments = true // Disallow domains... after optional_arguments
-		default:
-			if optionalArguments {
-				return "", errors.New("Argument is invalid!")
-			} else {
-				domains = append(domains, argEntity)
-			}
-		}
-		currentIndex += 1 // Move to next argument
-	}
-
+	// For example: /letsencrypt cert foo.bar.com --create-key --rsa-key-size 2048
 	svc := &command.CertService{
 		CommonName: domains[0],
 		Domains:    domains[1:],
-		CreateKey:  createKey,
-		RSAKeySize: rsaKeySize,
+		CreateKey:  opts.CreateKey,
+		RSAKeySize: opts.RSAKeySize,
 		Store:      store,
 	}
 
