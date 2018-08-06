@@ -101,6 +101,9 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 		}
 		currentIndex += 1 // Move to next argument
 	}
+	if len(domains) == 0 {
+		return "", errors.New("common name is required")
+	}
 
 	svc := &command.CertService{
 		CommonName: domains[0],
