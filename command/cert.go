@@ -24,11 +24,23 @@ func (c *CertCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize the store")
 	}
+	keyLength := 4096
+	if c.RSAKeySize != "" {
+		keyLengthInt, err := strconv.Atoi(c.RSAKeySize)
+		if err != nil {
+			return errors.Wrap(err, "RSA key length is not a number")
+		}
+		if keyLengthInt == 2048 || keyLengthInt == 4096 {
+			keyLength = keyLengthInt
+		} else {
+			return fmt.Errorf("Specified RSA key length is not 2048 or 4096, but %d", keyLengthInt)
+		}
+	}
 	return (&CertService{
 		CommonName: c.CommonName,
 		Domains:    c.Domains,
 		CreateKey:  c.CreateKey,
-		RSAKeySize: c.RSAKeySize,
+		RSAKeySize: keyLength,
 		Store:      store,
 	}).Run()
 }
@@ -37,7 +49,7 @@ type CertService struct {
 	CommonName string
 	Domains    []string
 	CreateKey  bool
-	RSAKeySize string
+	RSAKeySize int
 	Store      *agent.Store
 }
 
@@ -59,22 +71,7 @@ func (svc *CertService) Run() error {
 	var privateKey *rsa.PrivateKey
 	if svc.CreateKey {
 		log.Print("INFO: creating new private key...")
-
-		// Decide on RSA key length to use
-		RSAkeyLength := 4096
-		if svc.RSAKeySize != "" {
-			decodedKeyLength, err := strconv.Atoi(svc.RSAKeySize)
-			if err != nil {
-				return errors.Wrap(err, "RSA key length is not a number")
-			}
-			if decodedKeyLength == 2048 || decodedKeyLength == 4096 {
-				RSAkeyLength = decodedKeyLength
-			} else {
-				return fmt.Errorf("Specified RSA key length is not 2048 or 4096, but %d", decodedKeyLength)
-			}
-		}
-
-		certPrivkey, err := rsa.GenerateKey(rand.Reader, RSAkeyLength)
+		certPrivkey, err := rsa.GenerateKey(rand.Reader, svc.RSAKeySize)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate a keypair")
 		}
