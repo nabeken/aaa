@@ -24,10 +24,6 @@ func (c *CertCommand) Execute(args []string) error {
 		return errors.Wrap(err, "failed to initialize the store")
 	}
 
-	if c.RSAKeySize != 4096 && c.RSAKeySize != 2048 {
-		return errors.New("Key size must be 4096 or 2048")
-	}
-
 	return (&CertService{
 		CommonName: c.CommonName,
 		Domains:    c.Domains,
@@ -62,6 +58,10 @@ func (svc *CertService) Run() error {
 	// Creating private key for cert
 	var privateKey *rsa.PrivateKey
 	if svc.CreateKey {
+		if svc.RSAKeySize != 4096 && svc.RSAKeySize != 2048 {
+			return errors.New("key size must be 4096 or 2048")
+		}
+
 		log.Printf("INFO: creating %d bit new private key...", svc.RSAKeySize)
 		certPrivkey, err := rsa.GenerateKey(rand.Reader, svc.RSAKeySize)
 		if err != nil {
