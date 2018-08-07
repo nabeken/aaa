@@ -1,4 +1,4 @@
 {
-  "name": "dispatcher",
+  "name": "executor",
   "runtime": "golang"
 }
