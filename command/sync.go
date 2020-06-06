@@ -27,9 +27,7 @@ func (c *SyncCommand) Execute(args []string) error {
 
 	for _, fn := range []string{
 		"privkey.pem",
-		"fullchain.pem",
 		"cert.pem",
-		"chain.pem",
 	} {
 		key := c.s3Filer.Join("aaa-data", Options.Email, "domain", c.Domain, fn)
 		blob, err := c.s3Filer.ReadFile(key)
