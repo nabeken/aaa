@@ -49,17 +49,12 @@ func (svc *UploadService) buildUploadInput() (*iam.UploadServerCertificateInput,
 	if err != nil {
 		return nil, err
 	}
-	certChain, err := svc.get("chain.pem")
-	if err != nil {
-		return nil, err
-	}
 
 	now := time.Now().UTC()
 	domain := strings.Replace(svc.Domain, ".", "_", 0)
 	name := fmt.Sprintf("%s_%s", domain, now.Format("200601021504"))
 	return &iam.UploadServerCertificateInput{
 		CertificateBody:       &cert,
-		CertificateChain:      &certChain,
 		PrivateKey:            &privKey,
 		ServerCertificateName: aws.String(name),
 	}, nil
