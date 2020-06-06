@@ -59,7 +59,7 @@ func (c *RegCommand) Execute(args []string) error {
 	}
 
 	if !c.AgreeTOS {
-		log.Printf("Please agree with TOS found at %s", client.GetToSURL())
+		log.Printf("Please agree with TOS found at %s with --agree-tos", client.GetToSURL())
 		return nil
 	}
 
