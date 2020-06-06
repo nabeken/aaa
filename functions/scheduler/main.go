@@ -51,12 +51,6 @@ func main() {
 		renewalDate := now.AddDate(0, 0, renewalDaysBefore)
 		renewCommands := []string{}
 		for _, domain := range domains {
-			if domain.Authorization.Expires.Before(now) {
-				renewCommands = append(renewCommands, "authz "+domain.Domain)
-				// we don't renew authz and cert at the same time
-				// since the authz is expiring so the cert issuarance will be failed.
-				continue
-			}
 			if domain.Certificate.NotAfter.Before(renewalDate) {
 				renewCommands = append(renewCommands, "cert "+domain.Domain)
 			}

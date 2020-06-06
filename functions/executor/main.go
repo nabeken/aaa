@@ -29,28 +29,6 @@ var options struct {
 type dispatcher struct {
 }
 
-func (d *dispatcher) handleAuthzCommand(arg string, slcmd *slack.Command) (string, error) {
-	store, err := command.NewStore(options.Email, options.S3Bucket, options.S3KMSKeyID)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to initialize the store")
-	}
-	svc := &command.AuthzService{
-		Challenge: challengeType,
-		Domain:    arg,
-		Store:     store,
-	}
-
-	if err := svc.Run(); err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(
-		"%s The authorization for %s has been renewed.",
-		slack.FormatUserName(slcmd.UserName),
-		arg,
-	), nil
-}
-
 func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string, error) {
 	store, err := command.NewStore(options.Email, options.S3Bucket, options.S3KMSKeyID)
 	if err != nil {
@@ -147,8 +125,6 @@ func main() {
 		switch command[0] {
 		case "cert":
 			handler = dispatcher.handleCertCommand
-		case "authz":
-			handler = dispatcher.handleAuthzCommand
 		case "upload":
 			handler = dispatcher.handleUploadCommand
 		}
