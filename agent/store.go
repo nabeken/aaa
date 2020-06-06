@@ -12,10 +12,10 @@ import (
 	"github.com/go-acme/lego/v3/certcrypto"
 )
 
-var StorePrefix = "aaa-data"
+var StorePrefix = "aaa-data/v2"
 
 /*
-prefix: {{letsencrypt-base}}/aaa-agent/
+prefix: {{letsencrypt-base}}/aaa-data/v2
 
 Per Store instance:
 {{email}}/info
