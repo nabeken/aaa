@@ -61,12 +61,6 @@ func (svc *LsService) FetchData() ([]Domain, error) {
 		}
 
 		for _, dom := range domains {
-			authz, err := store.LoadAuthorization(dom)
-			if err != nil {
-				log.Printf("failed to load authorization for %s: %s. skipping...", dom, err)
-				continue
-			}
-
 			cert, err := store.LoadCert(dom)
 			if err != nil {
 				log.Printf("failed to load certificate for %s: %s (or new-cert is ongoing or this domain is in SAN in other certificates). skipping...", dom, err)
@@ -76,9 +70,6 @@ func (svc *LsService) FetchData() ([]Domain, error) {
 			data = append(data, Domain{
 				Email:  email,
 				Domain: dom,
-				Authorization: Authorization{
-					Expires: authz.GetExpires(),
-				},
 				Certificate: Certificate{
 					NotBefore: cert.NotBefore,
 					NotAfter:  cert.NotAfter,
@@ -111,14 +102,9 @@ func (svc *LsService) listAccounts() ([]string, error) {
 }
 
 type Domain struct {
-	Email         string        `json:"email"`
-	Domain        string        `json:"domain"`
-	Authorization Authorization `json:"authorization"`
-	Certificate   Certificate   `json:"certificate"`
-}
-
-type Authorization struct {
-	Expires time.Time `json:"expires"`
+	Email       string      `json:"email"`
+	Domain      string      `json:"domain"`
+	Certificate Certificate `json:"certificate"`
 }
 
 type Certificate struct {
