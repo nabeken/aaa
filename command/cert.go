@@ -3,10 +3,10 @@ package command
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"fmt"
 	"log"
 
-	"github.com/lestrrat/go-jwx/jwk"
+	"github.com/go-acme/lego/v3/certificate"
+	"github.com/go-acme/lego/v3/providers/dns"
 	"github.com/nabeken/aaa/agent"
 	"github.com/pkg/errors"
 )
@@ -25,6 +25,7 @@ func (c *CertCommand) Execute(args []string) error {
 	}
 
 	return (&CertService{
+		Email:      Options.Email,
 		CommonName: c.CommonName,
 		Domains:    c.Domains,
 		CreateKey:  c.CreateKey,
@@ -34,6 +35,7 @@ func (c *CertCommand) Execute(args []string) error {
 }
 
 type CertService struct {
+	Email      string
 	CommonName string
 	Domains    []string
 	CreateKey  bool
@@ -43,6 +45,16 @@ type CertService struct {
 
 func (svc *CertService) Run() error {
 	log.Print("INFO: now issuing certificate...")
+
+	ri, err := svc.Store.LoadRegistration()
+	if err != nil {
+		return errors.Wrap(err, "unable to load the registration")
+	}
+
+	client, err := agent.NewLegoClient(ri)
+	if err != nil {
+		return err
+	}
 
 	// trying to load the key
 	key, err := svc.Store.LoadCertKey(svc.CommonName)
@@ -56,7 +68,6 @@ func (svc *CertService) Run() error {
 	}
 
 	// Creating private key for cert
-	var privateKey *rsa.PrivateKey
 	if svc.CreateKey {
 		if svc.RSAKeySize != 4096 && svc.RSAKeySize != 2048 {
 			return errors.New("key size must be 4096 or 2048")
@@ -68,58 +79,34 @@ func (svc *CertService) Run() error {
 			return errors.Wrap(err, "failed to generate a keypair")
 		}
 
-		certPrivkeyJWK, err := jwk.New(certPrivkey)
-		if err != nil {
-			return errors.Wrap(err, "failed to create a JWK")
-		}
-
 		// storing private key for certificate
-		if err := svc.Store.SaveCertKey(svc.CommonName, certPrivkeyJWK); err != nil {
-			return errors.Wrap(err, "failed to store the JWK")
+		if err := svc.Store.SaveCertKey(svc.CommonName, certPrivkey); err != nil {
+			return errors.Wrap(err, "failed to store the private key for the cert")
 		}
 
-		privateKey = certPrivkey
+		key = certPrivkey
 	} else {
 		log.Print("INFO: using the existing private key...")
-		pkey, err := key.Materialize()
-		if err != nil {
-			return errors.Wrap(err, "failed to materialize the key")
-		}
-
-		rsaPrivKey, ok := pkey.(*rsa.PrivateKey)
-		if !ok {
-			return fmt.Errorf("aaa: key is not *rsa.PrivateKey but %v", pkey)
-		}
-
-		privateKey = rsaPrivKey
 	}
 
-	// Creating CSR
-	der, err := agent.CreateCertificateRequest(privateKey, svc.CommonName, svc.Domains...)
+	provider, err := dns.NewDNSChallengeProviderByName("route53")
 	if err != nil {
-		return errors.Wrap(err, "failed to create a CSR")
+		return errors.Wrap(err, "unable to initialize the challenge provider")
 	}
 
-	// initialize client here
-	client := agent.NewClient(DirectoryURL(), svc.Store)
-	if err := client.Init(); err != nil {
-		return errors.Wrap(err, "failed to initialize the client")
+	client.Challenge.SetDNS01Provider(provider)
+
+	request := certificate.ObtainRequest{
+		Domains:    append([]string{svc.CommonName}, svc.Domains...),
+		PrivateKey: key,
 	}
 
-	// Issue new-cert request
-	certURL, err := client.NewCertificate(der)
+	cert, err := client.Certificate.Obtain(request)
 	if err != nil {
-		return errors.Wrap(err, "failed to issue the certificate")
+		return errors.Wrap(err, "unable to obtain the certificate")
 	}
 
-	log.Printf("INFO: certificate will be available at %s", certURL)
-
-	issuerCert, myCert, err := client.GetCertificate(certURL)
-	if err != nil {
-		return errors.Wrap(err, "failed to get the certificate")
-	}
-
-	if err := svc.Store.SaveCert(svc.CommonName, issuerCert, myCert); err != nil {
+	if err := svc.Store.SaveCert(svc.CommonName, cert.Certificate); err != nil {
 		return errors.Wrap(err, "failed to store the certificate")
 	}
 

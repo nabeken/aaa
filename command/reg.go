@@ -1,113 +1,86 @@
 package command
 
 import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
-	"fmt"
 	"log"
 
-	"github.com/lestrrat/go-jwx/jwk"
+	"github.com/go-acme/lego/v3/registration"
 	"github.com/nabeken/aaa/agent"
+	"gopkg.in/square/go-jose.v2"
 )
 
 type RegCommand struct {
-	AgreeTOS string `long:"agree" description:"Agree with given TOS of URL"`
+	AgreeTOS bool `long:"agree-tos" description:"Agree with the ToS"`
+	Override bool `long:"override the registration if it already exists with a new key"`
 }
 
 func (c *RegCommand) Execute(args []string) error {
+	var (
+		privKey crypto.PrivateKey
+		err     error
+	)
+
 	// initialize S3 bucket and filer
 	store, err := NewStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
 	if err != nil {
 		return err
 	}
 
-	var publicKey jwk.Key
-	if key, err := store.LoadPublicKey(); err != nil && err == agent.ErrFileNotFound {
-		log.Println("INFO: account key pair is not found. Creating new account key pair...")
-
-		privkey, err := rsa.GenerateKey(rand.Reader, 4096)
-		if err != nil {
-			return err
-		}
-
-		privateKey, err := jwk.New(privkey)
-		if err != nil {
-			return err
-		}
-
-		if err := store.SaveKey(privateKey); err != nil {
-			return err
-		}
-
-		key, err = jwk.New(&privkey.PublicKey)
-		if err != nil {
-			return err
-		}
-
-		publicKey = key
-		log.Println("INFO: new account key pair has been created")
-	} else if err != nil {
-		return err
-	} else {
-		publicKey = key
-		log.Println("INFO: account key pair is found")
-	}
-
-	// initialize client here
-	client := agent.NewClient(DirectoryURL(), store)
-	if err := client.Init(); err != nil {
+	ri, err := store.LoadRegistration()
+	if err != nil && err != agent.ErrFileNotFound {
 		return err
 	}
 
-	var account *agent.Account
-
-	// try to load account info
-	account, err = store.LoadAccount()
-	if err != nil {
-		if err != agent.ErrFileNotFound {
-			return err
-		}
-
-		// begin new registration
-		newRegReq := &agent.NewRegistrationRequest{
-			Contact: []string{"mailto:" + Options.Email},
-		}
-
-		acc, err := client.Register(newRegReq)
-		if err != nil {
-			return err
-		}
-
-		// save an account before we make agreement
-		if err := store.SaveAccount(acc); err != nil {
-			return err
-		}
-
-		account = acc
-	}
-
-	if c.AgreeTOS != account.TOS {
-		fmt.Printf("Please agree with TOS found at %s\n", account.TOS)
+	if err == nil && !c.Override {
+		log.Println("INFO: found the existing registration. Please set --override to register with a new key.")
 		return nil
 	}
 
-	// update registration to agree with TOS
-	updateRegReq := &agent.UpdateRegistrationRequest{
-		Contact:   []string{"mailto:" + Options.Email},
-		Agreement: c.AgreeTOS,
-		Key:       publicKey,
-	}
+	log.Println("INFO: creating new account key pair...")
 
-	if err := client.UpdateRegistration(account.URL, updateRegReq); err != nil {
+	privKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
 		return err
 	}
 
-	account.TOSAgreed = true
-	if err := store.SaveAccount(account); err != nil {
+	ri = &agent.RegistrationInfo{
+		Email: Options.Email,
+		Key: &jose.JSONWebKey{
+			Key: privKey,
+		},
+	}
+
+	client, err := agent.NewLegoClient(ri)
+	if err != nil {
 		return err
 	}
 
-	log.Printf("INFO: registration has been done with the agreement found at %s", account.URL)
+	if !c.AgreeTOS {
+		log.Printf("Please agree with TOS found at %s", client.GetToSURL())
+		return nil
+	}
+
+	log.Println("INFO: registering account...")
+
+	reg, err := client.Registration.Register(registration.RegisterOptions{
+		TermsOfServiceAgreed: c.AgreeTOS,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("DEBUG: RegistrationInfo: %#v\n", reg)
+
+	ri.Registration = reg
+	if err := store.SaveRegistration(ri); err != nil {
+		log.Println("ERROR: unable to save the registration")
+		return err
+	}
+
+	log.Printf("INFO: registration has been done")
 
 	return nil
 }
