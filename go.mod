@@ -4,18 +4,18 @@ go 1.14
 
 require (
 	github.com/apex/go-apex v1.0.0
-	github.com/aws/aws-sdk-go v1.15.5
-	github.com/go-ini/ini v1.38.1 // indirect
+	github.com/aws/aws-sdk-go v1.31.12
+	github.com/cenkalti/backoff/v4 v4.0.2 // indirect
+	github.com/go-acme/lego/v3 v3.7.0
 	github.com/jessevdk/go-flags v1.4.0
-	github.com/lestrrat/go-jwx v0.0.0-20180221005942-b7d4802280ae
-	github.com/lestrrat/go-pdebug v0.0.0-20180220043741-569c97477ae8 // indirect
+	github.com/miekg/dns v1.1.29 // indirect
 	github.com/nabeken/aws-go-s3 v0.1.2
-	github.com/pkg/errors v0.8.0
-	github.com/smartystreets/goconvey v1.6.4 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1 // indirect
-	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
 	github.com/tj/assert v0.0.1 // indirect
+	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9 // indirect
+	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980 // indirect
 	gopkg.in/ini.v1 v1.57.0 // indirect
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.1
 )
