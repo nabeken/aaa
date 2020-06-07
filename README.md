@@ -68,14 +68,9 @@ export AAA_DIRECTORY_URL=https://acme-v02.api.letsencrypt.org/directory
 
 ```sh
 aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx
-Please agree with TOS found at https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf
 ```
 
-`aaa` prints the message that you must agree TOS to proceed. After you read it and agree with it:
-
-```sh
-aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --agree-tos
-```
+`aaa` prints the message that you must agree TOS to proceed. You can agree with `--agree-tos`.
 
 ## Certificate issuance
 
@@ -91,6 +86,15 @@ aaa cert \
 ```
 
 You can use this command to renew the cert. `aaa` will reuse the existing private key, or add `--create-key` for renew the key.
+
+## Uploading certificate to ACM
+
+```
+aaa upload \
+  --email you@example.com \
+  --s3-bucket YourBucket \
+  --domain le-test-02.example.com
+```
 
 ## Listing all information
 
