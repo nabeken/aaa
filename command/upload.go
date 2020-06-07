@@ -1,15 +1,14 @@
 package command
 
 import (
-	"fmt"
+	"crypto/x509"
+	"encoding/pem"
 	"log"
-	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/iam/iamiface"
+	"github.com/aws/aws-sdk-go/service/acm"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/go-acme/lego/v3/certcrypto"
 	"github.com/nabeken/aaa/agent"
 	"github.com/nabeken/aws-go-s3/bucket"
 	"github.com/pkg/errors"
@@ -20,63 +19,64 @@ type UploadService struct {
 	Email  string
 
 	S3Filer *agent.S3Filer
-	IAMconn iamiface.IAMAPI
+	ACMconn *acm.ACM
 }
 
 /*
-aws iam upload-server-certificate \
-	--server-certificate-name <value> \
-    --certificate-body <value> \
-    --private-key <value> \
-    --certificate-chain <value>
+aws acm import-certificate \
+	--certificate file://Certificate.pem \
+	--certificate-chain file://CertificateChain.pem \
+    --private-key file://PrivateKey.pem
 */
 
-func (svc *UploadService) get(key string) (string, error) {
-	fn := svc.S3Filer.Join("aaa-data", svc.Email, "domain", svc.Domain, key)
+func (svc *UploadService) get(key string) ([]byte, error) {
+	fn := svc.S3Filer.Join("aaa-data", "v2", svc.Email, "domain", svc.Domain, key)
 	blob, err := svc.S3Filer.ReadFile(fn)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to read '%s'", fn)
+		return nil, errors.Wrapf(err, "failed to read '%s'", fn)
 	}
-	return string(blob), nil
+	return blob, nil
 }
 
-func (svc *UploadService) buildUploadInput() (*iam.UploadServerCertificateInput, error) {
+func (svc *UploadService) buildImportCertificateInput() (*acm.ImportCertificateInput, error) {
 	privKey, err := svc.get("privkey.pem")
 	if err != nil {
 		return nil, err
 	}
+
 	cert, err := svc.get("cert.pem")
 	if err != nil {
 		return nil, err
 	}
-	certChain, err := svc.get("chain.pem")
+
+	certs, err := certcrypto.ParsePEMBundle(cert)
 	if err != nil {
 		return nil, err
 	}
 
-	now := time.Now().UTC()
-	domain := strings.Replace(svc.Domain, ".", "_", 0)
-	name := fmt.Sprintf("%s_%s", domain, now.Format("200601021504"))
-	return &iam.UploadServerCertificateInput{
-		CertificateBody:       &cert,
-		CertificateChain:      &certChain,
-		PrivateKey:            &privKey,
-		ServerCertificateName: aws.String(name),
+	return &acm.ImportCertificateInput{
+		Certificate:      svc.pemEncode(certs[0]),
+		PrivateKey:       privKey,
+		CertificateChain: svc.pemEncode(certs[1]),
 	}, nil
 }
 
+func (svc *UploadService) pemEncode(cert *x509.Certificate) []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+}
+
 func (svc *UploadService) Run() (string, error) {
-	req, err := svc.buildUploadInput()
+	req, err := svc.buildImportCertificateInput()
 	if err != nil {
-		return "", errors.Wrap(err, "failed to build a upload request")
+		return "", errors.Wrap(err, "failed to build an import request")
 	}
 
-	resp, err := svc.IAMconn.UploadServerCertificate(req)
+	resp, err := svc.ACMconn.ImportCertificate(req)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to upload to IAM")
+		return "", errors.Wrap(err, "failed to import into ACM")
 	}
 
-	return aws.StringValue(resp.ServerCertificateMetadata.Arn), nil
+	return aws.StringValue(resp.CertificateArn), nil
 }
 
 type UploadCommand struct {
@@ -90,7 +90,7 @@ func (c *UploadCommand) Execute(args []string) error {
 		Domain:  c.Domain,
 		Email:   Options.Email,
 		S3Filer: agent.NewS3Filer(s3b, ""),
-		IAMconn: iam.New(sess),
+		ACMconn: acm.New(sess),
 	}).Run()
 	if err != nil {
 		return err

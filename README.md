@@ -1,25 +1,13 @@
 # aaa
 
-AAA is an [ACME](https://ietf-wg-acme.github.io/acme/) Agent for AWS environment.
-All information is stored on [S3 with SSE-KMS](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html).
-This design allows us to run ACME agent in stateless (e.g. AWS Lambda).
+AAA is an yet another integration with [go-acme/lego](https://github.com/go-acme/lego) for AWS environment. All information is persisted on [S3 with SSE-KMS](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html) so that it can run on AWS Lambda.
 
-## Current Status: beta
+## Integrations
 
-AAA works well with DNS-01 on LE's production environment. It means you can issue certificates without HTTP servers.
-
-- :heavy_check_mark: New Registration
-- :heavy_check_mark: New Authorization
-  - :heavy_check_mark: dns-01 with Route53
-- :heavy_check_mark: Create CSR with [SAN (Subject Alternative Name)](https://en.wikipedia.org/wiki/SubjectAltName)
-- :heavy_check_mark: Issue certificates
-- :heavy_check_mark: Store data on S3 with SSE-KMS
-- :heavy_check_mark: Renewal management by utilizing S3
-- :heavy_check_mark: AWS Lambda build
-  - :heavy_check_mark: authz, cert
-  - :heavy_check_mark: automatic certificates renewal
-- :heavy_check_mark: Confirmed that it works well with ELB
-- :heavy_check_mark: Integrate with [Apex](https://apex.run/).
+- Authorize domains with Route53
+- Persist the registration information and certificate on S3
+- Upload certificates to ACM
+- Run with Slack command over the API Gateway + Lambda (deploy with [Apex](https://apex.run/))
 
 ## Installation
 
@@ -73,46 +61,40 @@ In default, ACME API endpoint in `aaa` points to LE's staging environment.
 After you grasp how `aaa` works, you can point the endpoint to LE's production environment.
 
 ```sh
-export AAA_DIRECTORY_URL=https://acme-v01.api.letsencrypt.org/directory
+export AAA_DIRECTORY_URL=https://acme-v02.api.letsencrypt.org/directory
 ```
 
 ## Registration
 
 ```sh
 aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx
-Please agree with TOS found at https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf
 ```
 
-`aaa` prints the message that you must agree TOS to proceed. After you read it and agree with it:
-
-```sh
-aaa reg --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --agree https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf
-```
-
-## Authorization
-
-`aaa` implements DNS-01 solver. You must provide Route53 environment.
-
-```sh
-aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --domain le-test-01.example.com --challenge dns-01
-```
-
-Bonus: You authorize more domains, you will get a certificate that has SAN for your domains.
-
-```sh
-aaa authz --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --domain le-test-02.example.com --challenge dns-01
-```
+`aaa` prints the message that you must agree TOS to proceed. You can agree with `--agree-tos`.
 
 ## Certificate issuance
 
 Let's issue a certifiate for two domains `le-test-0[12].example.com`. If you don't want to issue a certificate with SAN, just drop `--domain` argument.
 
 ```
-aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --cn le-test-01.example.com --domain le-test-02.example.com --create-key
+aaa cert \
+  --email you@example.com \
+  --s3-bucket YourBucket \
+  --s3-kms-key xxxx \
+  --cn le-test-01.example.com \
+  --domain le-test-02.example.com
 ```
 
-Please note `--create-key` is required for the first time since you don't have a private key for the certificate.
-To renew the cert, you can still reuse the private key with omitting `--create-key` or re-generate it with `--create-key`.
+You can use this command to renew the cert. `aaa` will reuse the existing private key, or add `--create-key` for renew the key.
+
+## Uploading certificate to ACM
+
+```
+aaa upload \
+  --email you@example.com \
+  --s3-bucket YourBucket \
+  --domain le-test-02.example.com
+```
 
 ## Listing all information
 
@@ -124,9 +106,6 @@ aaa ls --s3-bucket YourBucket --s3-kms-key xxxx | jq -r .
   {
     "email": "letest-stag@example.com",
     "domain": "le-test-dns-01.example.com",
-    "authorization": {
-      "expires": "2016-11-06T16:57:22Z"
-    },
     "certificate": {
       "not_before": "2016-01-11T16:02:00Z",
       "not_after": "2016-04-10T16:02:00Z",
@@ -138,23 +117,7 @@ aaa ls --s3-bucket YourBucket --s3-kms-key xxxx | jq -r .
 ]
 ```
 
-Please note that information is encoded in JSON. This information will be used for certificate renewal management and
-it allows another processes to consume the info easily.
-
-## Certificate renewal
-
-If the authorization is still available, you can just issue the certificate.
-Otherwise, you need to begin with authorization by using `authz` subcommand. See the above.`Authorization` section.
-
-```sh
-aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --cn le-test-01.example.com --domain le-test-02.example.com
-```
-
-If you want to regenerate the private key, add `--create-key` flag too:
-
-```sh
-aaa cert --email you@example.com --s3-bucket YourBucket --s3-kms-key xxxx --create-key --cn le-test-01.example.com --domain le-test-02.example.com
-```
+Please note that information is encoded in JSON. This information will be used for certificate renewal management and it allows another processes to consume the info easily.
 
 ## Certificate distribution
 
@@ -304,17 +267,4 @@ Finally, you can fill the URL in `Integration Settings`.
 
 ## Automatic renewal
 
-You can invoke `aaa_scheduler` lambda function by CloudWatch Events.
-The scheduler will invoke the executor lambda function when a domain requires authz or cert renewal 30 days before it expires.
-
-## Integrated libraries
-
-- [github.com/aws/aws-sdk-go](https://github.com/aws/aws-sdk-go)
-- [github.com/lestrrat/go-jwx](https://github.com/lestrrat/go-jwx)
-- [github.com/tent/http-link-go](https://github.com/tent/http-link-go)
-- [github.com/jessevdk/go-flags](https://github.com/jessevdk/go-flags)
-
-## Future work
-
-- Integrate [S3 Event Notifications](http://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html) ...
-  - To automate the installation of certificates (e.g. ELB)
+You can invoke `aaa_scheduler` lambda function by CloudWatch Events. The scheduler will invoke the executor lambda function when a domain requires authz or cert renewal 30 days before it expires.

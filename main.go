@@ -30,12 +30,6 @@ func init() {
 		&command.RegCommand{},
 	)
 	parser.AddCommand(
-		"authz",
-		"Authorize a domain",
-		"The authz command authorizes a domain.",
-		&command.AuthzCommand{},
-	)
-	parser.AddCommand(
 		"cert",
 		"Issue certificates",
 		"The cert command issues certificates.",
