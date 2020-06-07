@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	apex "github.com/apex/go-apex"
-	"github.com/aws/aws-sdk-go/service/iam"
+	golambda "github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/service/acm"
 	"github.com/aws/aws-sdk-go/service/s3"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/nabeken/aaa/agent"
@@ -64,7 +64,7 @@ func (d *dispatcher) handleCertCommand(arg string, slcmd *slack.Command) (string
 
 	return fmt.Sprintf(
 		"%s The certificate for %s is now available!\n```\n"+
-			"aws s3 sync s3://%s/aaa-data/%s/domain/%s/ %s```",
+			"aws s3 sync s3://%s/aaa-data/v2/%s/domain/%s/ %s```",
 		slack.FormatUserName(slcmd.UserName),
 		domains,
 		options.S3Bucket,
@@ -81,7 +81,7 @@ func (d *dispatcher) handleUploadCommand(arg string, slcmd *slack.Command) (stri
 		Domain:  arg,
 		Email:   options.Email,
 		S3Filer: agent.NewS3Filer(s3b, ""),
-		IAMconn: iam.New(sess),
+		ACMconn: acm.New(sess),
 	}
 
 	arn, err := svc.Run()
@@ -90,11 +90,48 @@ func (d *dispatcher) handleUploadCommand(arg string, slcmd *slack.Command) (stri
 	}
 
 	return fmt.Sprintf(
-		"%s The certificate `%s` has been uploaded to IAM! ARN is `%s`",
+		"%s The certificate `%s` has been uploaded to ACM! ARN is `%s`",
 		slack.FormatUserName(slcmd.UserName),
 		arg,
 		arn,
 	), nil
+}
+
+func realmain(event json.RawMessage) (interface{}, error) {
+	slcmd, err := slack.ParseCommand(event)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse the command")
+	}
+	log.Println("slack command:", slcmd)
+
+	handleError := func(err error) error {
+		return slack.PostErrorResponse(err, slcmd)
+	}
+
+	command := strings.SplitN(slcmd.Text, " ", 2)
+	if len(command) != 2 {
+		return "", handleError(errors.New("invalid command"))
+	}
+
+	dispatcher := &dispatcher{}
+
+	var handler func(string, *slack.Command) (string, error)
+	switch command[0] {
+	case "cert":
+		handler = dispatcher.handleCertCommand
+	case "upload":
+		handler = dispatcher.handleUploadCommand
+	}
+
+	respStr, err := handler(command[1], slcmd)
+	if err != nil {
+		return nil, handleError(err)
+	}
+	resp := &slack.CommandResponse{
+		ResponseType: "in_channel",
+		Text:         respStr,
+	}
+	return slack.PostResponse(slcmd.ResponseURL, resp), nil
 }
 
 func main() {
@@ -103,40 +140,5 @@ func main() {
 	options.S3KMSKeyID = os.Getenv("KMS_KEY_ID")
 	options.Email = os.Getenv("EMAIL")
 
-	dispatcher := &dispatcher{}
-
-	apex.HandleFunc(func(event json.RawMessage, ctx *apex.Context) (interface{}, error) {
-		slcmd, err := slack.ParseCommand(event)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse the command")
-		}
-		log.Println("slack command:", slcmd)
-
-		handleError := func(err error) error {
-			return slack.PostErrorResponse(err, slcmd)
-		}
-
-		command := strings.SplitN(slcmd.Text, " ", 2)
-		if len(command) != 2 {
-			return nil, handleError(errors.New("invalid command"))
-		}
-
-		var handler func(string, *slack.Command) (string, error)
-		switch command[0] {
-		case "cert":
-			handler = dispatcher.handleCertCommand
-		case "upload":
-			handler = dispatcher.handleUploadCommand
-		}
-
-		respStr, err := handler(command[1], slcmd)
-		if err != nil {
-			return nil, handleError(err)
-		}
-		resp := &slack.CommandResponse{
-			ResponseType: "in_channel",
-			Text:         respStr,
-		}
-		return nil, slack.PostResponse(slcmd.ResponseURL, resp)
-	})
+	golambda.Start(realmain)
 }
