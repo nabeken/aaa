@@ -121,6 +121,8 @@ func realmain(event json.RawMessage) (interface{}, error) {
 		handler = dispatcher.handleCertCommand
 	case "upload":
 		handler = dispatcher.handleUploadCommand
+	default:
+		return nil, handleError(errors.New("invalid command"))
 	}
 
 	respStr, err := handler(command[1], slcmd)
