@@ -1,15 +1,16 @@
 package command
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/nabeken/aaa/agent"
-	"github.com/nabeken/aws-go-s3/bucket"
+	"github.com/nabeken/aws-go-s3/v2/bucket"
 	"github.com/pkg/errors"
 )
 
@@ -18,33 +19,36 @@ type LsCommand struct {
 }
 
 func (c *LsCommand) Execute(args []string) error {
-	s3b := bucket.New(s3.New(NewAWSSession()), Options.S3Bucket)
+	ctx := context.Background()
+	s3b := bucket.New(s3.NewFromConfig(MustNewAWSConfig(ctx)), Options.S3Bucket)
+
 	return (&LsService{
 		Filer: agent.NewS3Filer(s3b, Options.S3KMSKeyID),
-	}).WriteTo(c.Format, os.Stdout)
+	}).WriteTo(ctx, c.Format, os.Stdout)
 }
 
 type LsService struct {
 	Filer agent.Filer
 }
 
-func (svc *LsService) WriteTo(format string, w io.Writer) error {
-	output, err := svc.FetchData()
+func (svc *LsService) WriteTo(ctx context.Context, format string, w io.Writer) error {
+	output, err := svc.FetchData(ctx)
 	if err != nil {
 		return err
 	}
+
 	switch format {
 	case "json":
 		return json.NewEncoder(w).Encode(output)
 	default:
-		return errors.Errorf("'%s' is not implemented")
+		return errors.Errorf("'%s' is not implemented", format)
 	}
 }
 
-func (svc *LsService) FetchData() ([]Domain, error) {
+func (svc *LsService) FetchData(ctx context.Context) ([]Domain, error) {
 	data := []Domain{}
 
-	emails, err := svc.listAccounts()
+	emails, err := svc.listAccounts(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list the accounts")
 	}
@@ -55,13 +59,13 @@ func (svc *LsService) FetchData() ([]Domain, error) {
 			return nil, errors.Wrap(err, "failed to initialize the store")
 		}
 
-		domains, err := store.ListDomains()
+		domains, err := store.ListDomains(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list the domains")
 		}
 
 		for _, dom := range domains {
-			cert, err := store.LoadCert(dom)
+			cert, err := store.LoadCert(ctx, dom)
 			if err != nil {
 				log.Printf("failed to load certificate for %s: %s (or new-cert is ongoing or this domain is in SAN in other certificates). skipping...", dom, err)
 				continue
@@ -82,8 +86,8 @@ func (svc *LsService) FetchData() ([]Domain, error) {
 	return data, nil
 }
 
-func (svc *LsService) listAccounts() ([]string, error) {
-	dirs, err := svc.Filer.ListDir(agent.StorePrefix)
+func (svc *LsService) listAccounts(ctx context.Context) ([]string, error) {
+	dirs, err := svc.Filer.ListDir(ctx, agent.StorePrefix)
 	if err != nil {
 		return nil, err
 	}

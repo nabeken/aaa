@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"crypto"
 	"crypto/x509"
 	"encoding/json"
@@ -9,7 +10,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/go-acme/lego/v3/certcrypto"
+	"github.com/go-acme/lego/v4/certcrypto"
 )
 
 var StorePrefix = "aaa-data/v2"
@@ -51,8 +52,8 @@ func NewStore(email string, filer Filer) (*Store, error) {
 }
 
 // LoadRegistration returns the existing registration.
-func (s *Store) LoadRegistration() (*RegistrationInfo, error) {
-	blob, err := s.filer.ReadFile(s.joinPrefix("info", s.email+".json"))
+func (s *Store) LoadRegistration(ctx context.Context) (*RegistrationInfo, error) {
+	blob, err := s.filer.ReadFile(ctx, s.joinPrefix("info", s.email+".json"))
 	if err != nil {
 		return nil, err
 	}
@@ -61,27 +62,29 @@ func (s *Store) LoadRegistration() (*RegistrationInfo, error) {
 	if err := json.Unmarshal(blob, ri); err != nil {
 		return nil, err
 	}
+
 	return ri, nil
 }
 
-func (s *Store) SaveRegistration(ri *RegistrationInfo) error {
+func (s *Store) SaveRegistration(ctx context.Context, ri *RegistrationInfo) error {
 	blob, err := json.Marshal(ri)
 	if err != nil {
 		return err
 	}
 
-	return s.filer.WriteFile(s.joinPrefix("info", s.email+".json"), blob)
+	return s.filer.WriteFile(ctx, s.joinPrefix("info", s.email+".json"), blob)
 }
 
-func (s *Store) SaveCertKey(domain string, privKey crypto.PrivateKey) error {
+func (s *Store) SaveCertKey(ctx context.Context, domain string, privKey crypto.PrivateKey) error {
 	return s.filer.WriteFile(
+		ctx,
 		s.joinPrefix("domain", domain, "privkey.pem"),
 		certcrypto.PEMEncode(privKey),
 	)
 }
 
-func (s *Store) LoadCertKey(domain string) (crypto.PrivateKey, error) {
-	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "privkey.pem"))
+func (s *Store) LoadCertKey(ctx context.Context, domain string) (crypto.PrivateKey, error) {
+	blob, err := s.filer.ReadFile(ctx, s.joinPrefix("domain", domain, "privkey.pem"))
 	if err != nil {
 		return nil, err
 	}
@@ -89,27 +92,29 @@ func (s *Store) LoadCertKey(domain string) (crypto.PrivateKey, error) {
 	return certcrypto.ParsePEMPrivateKey(blob)
 }
 
-func (s *Store) LoadCert(domain string) (*x509.Certificate, error) {
-	blob, err := s.filer.ReadFile(s.joinPrefix("domain", domain, "cert.pem"))
+func (s *Store) LoadCert(ctx context.Context, domain string) (*x509.Certificate, error) {
+	blob, err := s.filer.ReadFile(ctx, s.joinPrefix("domain", domain, "cert.pem"))
 	if err != nil {
 		return nil, err
 	}
 
 	block, _ := pem.Decode(blob)
+
 	return x509.ParseCertificate(block.Bytes)
 }
 
-func (s *Store) SaveCert(domain string, cert []byte) error {
-	return s.filer.WriteFile(s.joinPrefix("domain", domain, "cert.pem"), cert)
+func (s *Store) SaveCert(ctx context.Context, domain string, cert []byte) error {
+	return s.filer.WriteFile(ctx, s.joinPrefix("domain", domain, "cert.pem"), cert)
 }
 
-func (s *Store) ListDomains() ([]string, error) {
-	dirs, err := s.filer.ListDir(s.joinPrefix("domain"))
+func (s *Store) ListDomains(ctx context.Context) ([]string, error) {
+	dirs, err := s.filer.ListDir(ctx, s.joinPrefix("domain"))
 	if err != nil {
 		return nil, err
 	}
 
 	domains := make([]string, 0, len(dirs))
+
 	for _, dir := range dirs {
 		elem := s.filer.Split(dir)
 
@@ -118,6 +123,7 @@ func (s *Store) ListDomains() ([]string, error) {
 			domains = append(domains, elem[3])
 		}
 	}
+
 	return domains, nil
 }
 

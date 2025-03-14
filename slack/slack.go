@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -43,6 +43,7 @@ func ParseCommand(payload []byte) (*Command, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to unescape")
 		}
+
 		*escaped = unescaped
 	}
 
@@ -64,10 +65,11 @@ func PostResponse(respURL string, cmdResp *CommandResponse) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to post the response to Slack")
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := ioutil.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(resp.Body)
 		return errors.Errorf("failed to post the response to Slack: %s", string(respBody))
 	}
 
@@ -79,6 +81,7 @@ func PostErrorResponse(err error, slcmd *Command) error {
 		ResponseType: "in_channel",
 		Text:         fmt.Sprintf("%s ERROR: `%s`", FormatUserName(slcmd.UserName), err),
 	}
+
 	return PostResponse(slcmd.ResponseURL, resp)
 }
 
@@ -88,5 +91,6 @@ func FormatUserName(name string) string {
 	case "here", "channel":
 		return "<!" + name + ">"
 	}
+
 	return "<@" + name + ">"
 }
