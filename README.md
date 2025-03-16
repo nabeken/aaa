@@ -2,6 +2,10 @@
 
 AAA is an yet another integration with [go-acme/lego](https://github.com/go-acme/lego) for AWS environment. All information is persisted on [S3 with SSE-KMS](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html) so that it can run on AWS Lambda.
 
+## News as of March 16, 2025
+
+I've tagged the codebase at of March 16, 2025 as `v2.0.0`. `master` branch is for for v3 with upcoming major refactoring.
+
 ## Integrations
 
 - Authorize domains with Route53
