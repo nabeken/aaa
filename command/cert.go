@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
+	"fmt"
 	"log"
 
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/providers/dns"
 	"github.com/nabeken/aaa/v3/agent"
-	"github.com/pkg/errors"
 )
 
 type CertCommand struct {
@@ -22,7 +23,7 @@ type CertCommand struct {
 func (c *CertCommand) Execute(args []string) error {
 	store, err := NewStore(Options.Email, Options.S3Bucket, Options.S3KMSKeyID)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialize the store")
+		return fmt.Errorf("initializing the store: %w", err)
 	}
 
 	return (&CertService{
@@ -49,7 +50,7 @@ func (svc *CertService) Run(ctx context.Context) error {
 
 	ri, err := svc.Store.LoadRegistration(ctx)
 	if err != nil {
-		return errors.Wrap(err, "unable to load the registration")
+		return fmt.Errorf("loading the registration: %w", err)
 	}
 
 	client, err := agent.NewLegoClient(ri)
@@ -61,7 +62,7 @@ func (svc *CertService) Run(ctx context.Context) error {
 	key, err := svc.Store.LoadCertKey(ctx, svc.CommonName)
 	if err != nil {
 		if err != agent.ErrFileNotFound {
-			return errors.Wrap(err, "failed to load the key")
+			return fmt.Errorf("loading the key: %w", err)
 		}
 
 		// we have to create a new keypair anyway
@@ -77,12 +78,12 @@ func (svc *CertService) Run(ctx context.Context) error {
 		log.Printf("INFO: creating %d bit new private key...", svc.RSAKeySize)
 		certPrivkey, err := rsa.GenerateKey(rand.Reader, svc.RSAKeySize)
 		if err != nil {
-			return errors.Wrap(err, "failed to generate a keypair")
+			return fmt.Errorf("generating a keypair: %w", err)
 		}
 
 		// storing private key for certificate
 		if err := svc.Store.SaveCertKey(ctx, svc.CommonName, certPrivkey); err != nil {
-			return errors.Wrap(err, "failed to store the private key for the cert")
+			return fmt.Errorf("storing the private key for the cert: %w", err)
 		}
 
 		key = certPrivkey
@@ -92,7 +93,7 @@ func (svc *CertService) Run(ctx context.Context) error {
 
 	provider, err := dns.NewDNSChallengeProviderByName("route53")
 	if err != nil {
-		return errors.Wrap(err, "unable to initialize the challenge provider")
+		return fmt.Errorf("initializing the challenge provider: %w", err)
 	}
 
 	client.Challenge.SetDNS01Provider(provider)
@@ -104,11 +105,11 @@ func (svc *CertService) Run(ctx context.Context) error {
 
 	cert, err := client.Certificate.Obtain(request)
 	if err != nil {
-		return errors.Wrap(err, "unable to obtain the certificate")
+		return fmt.Errorf("obtaining the certificate: %w", err)
 	}
 
 	if err := svc.Store.SaveCert(ctx, svc.CommonName, cert.Certificate); err != nil {
-		return errors.Wrap(err, "failed to store the certificate")
+		return fmt.Errorf("storing the certificate: %w", err)
 	}
 
 	log.Print("INFO: certificate is successfully saved")

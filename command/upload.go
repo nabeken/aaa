@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,7 +13,6 @@ import (
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/nabeken/aaa/v3/agent"
 	"github.com/nabeken/aws-go-s3/v2/bucket"
-	"github.com/pkg/errors"
 )
 
 type UploadService struct {
@@ -35,7 +35,7 @@ func (svc *UploadService) get(ctx context.Context, key string) ([]byte, error) {
 
 	blob, err := svc.S3Filer.ReadFile(ctx, fn)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read '%s'", fn)
+		return nil, fmt.Errorf("reading '%s': %w", fn, err)
 	}
 
 	return blob, nil
@@ -71,12 +71,12 @@ func (svc *UploadService) pemEncode(cert *x509.Certificate) []byte {
 func (svc *UploadService) Run(ctx context.Context) (string, error) {
 	req, err := svc.buildImportCertificateInput(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to build an import request")
+		return "", fmt.Errorf("building an import request: %w", err)
 	}
 
 	resp, err := svc.ACMClient.ImportCertificate(ctx, req)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to import into ACM")
+		return "", fmt.Errorf("importing into ACM: %w", err)
 	}
 
 	return aws.ToString(resp.CertificateArn), nil

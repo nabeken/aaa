@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/nabeken/aaa/v3/command"
 	"github.com/nabeken/aaa/v3/slack"
-	"github.com/pkg/errors"
 )
 
 var lambdaSvc *lambda.Client
@@ -27,7 +27,7 @@ func realmain(event json.RawMessage) (*slack.CommandResponse, error) {
 
 	slcmd, err := slack.ParseCommand(event)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse the command")
+		return nil, fmt.Errorf("parsing the command: %w", err)
 	}
 
 	if slcmd.Token != token {
@@ -43,7 +43,7 @@ func realmain(event json.RawMessage) (*slack.CommandResponse, error) {
 	ctx := context.Background()
 
 	if _, err := lambdaSvc.Invoke(ctx, req); err != nil {
-		return nil, errors.Wrap(err, "failed to invoke the executor")
+		return nil, fmt.Errorf("invoking the executor: %w", err)
 	}
 
 	resp := &slack.CommandResponse{

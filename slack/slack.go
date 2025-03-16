@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/pkg/errors"
 )
 
 type Command struct {
@@ -31,7 +29,7 @@ type Command struct {
 func ParseCommand(payload []byte) (*Command, error) {
 	command := &Command{}
 	if err := json.Unmarshal(payload, command); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal")
+		return nil, err
 	}
 
 	for _, escaped := range []*string{
@@ -41,7 +39,7 @@ func ParseCommand(payload []byte) (*Command, error) {
 	} {
 		unescaped, err := url.QueryUnescape(*escaped)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to unescape")
+			return nil, err
 		}
 
 		*escaped = unescaped
@@ -58,19 +56,19 @@ type CommandResponse struct {
 func PostResponse(respURL string, cmdResp *CommandResponse) error {
 	buf := &bytes.Buffer{}
 	if err := json.NewEncoder(buf).Encode(cmdResp); err != nil {
-		return errors.Wrap(err, "failed to encode to JSON")
+		return err
 	}
 
 	resp, err := http.Post(respURL, "application/json", buf)
 	if err != nil {
-		return errors.Wrap(err, "failed to post the response to Slack")
+		return err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return errors.Errorf("failed to post the response to Slack: %s", string(respBody))
+		return fmt.Errorf("posting the response to Slack: %s", string(respBody))
 	}
 
 	return nil

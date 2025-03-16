@@ -15,7 +15,6 @@ require (
 	github.com/go-jose/go-jose/v4 v4.0.5
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/nabeken/aws-go-s3/v2 v2.0.2
-	github.com/pkg/errors v0.9.1
 )
 
 require (
@@ -153,6 +152,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/peterhellberg/link v1.2.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pquerna/otp v1.4.0 // indirect
 	github.com/regfish/regfish-dnsapi-go v0.1.1 // indirect
