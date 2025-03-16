@@ -1,5 +1,7 @@
 # aaa
 
+[![Go](https://github.com/nabeken/aaa/actions/workflows/go.yml/badge.svg)](https://github.com/nabeken/aaa/actions/workflows/go.yml)
+
 AAA is an yet another integration with [go-acme/lego](https://github.com/go-acme/lego) for AWS environment. All information is persisted on [S3 with SSE-KMS](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html) so that it can run with serverless.
 
 ## News as of March 16, 2025
