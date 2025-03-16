@@ -2,7 +2,7 @@ module github.com/nabeken/aaa/v3
 
 go 1.23.0
 
-toolchain go1.23.4
+toolchain go1.24.1
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
