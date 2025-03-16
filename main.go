@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/jessevdk/go-flags"
-	"github.com/nabeken/aaa/command"
+	"github.com/nabeken/aaa/v3/command"
 )
 
 var (

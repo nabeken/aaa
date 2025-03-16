@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-acme/lego/v4/certcrypto"
-	"github.com/nabeken/aaa/agent"
+	"github.com/nabeken/aaa/v3/agent"
 	"github.com/nabeken/aws-go-s3/v2/bucket"
 	"github.com/pkg/errors"
 )
