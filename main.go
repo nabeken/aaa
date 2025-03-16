@@ -19,6 +19,7 @@ func realmain() int {
 	if _, err := parser.Parse(); err != nil {
 		return 1
 	}
+
 	return 0
 }
 

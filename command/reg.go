@@ -1,15 +1,16 @@
 package command
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"log"
 
-	"github.com/go-acme/lego/v3/registration"
+	"github.com/go-acme/lego/v4/registration"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/nabeken/aaa/agent"
-	"gopkg.in/square/go-jose.v2"
 )
 
 type RegCommand struct {
@@ -21,6 +22,7 @@ func (c *RegCommand) Execute(args []string) error {
 	var (
 		privKey crypto.PrivateKey
 		err     error
+		ctx     = context.Background()
 	)
 
 	// initialize S3 bucket and filer
@@ -29,7 +31,7 @@ func (c *RegCommand) Execute(args []string) error {
 		return err
 	}
 
-	ri, err := store.LoadRegistration()
+	_, err = store.LoadRegistration(ctx)
 	if err != nil && err != agent.ErrFileNotFound {
 		return err
 	}
@@ -46,7 +48,7 @@ func (c *RegCommand) Execute(args []string) error {
 		return err
 	}
 
-	ri = &agent.RegistrationInfo{
+	ri := &agent.RegistrationInfo{
 		Email: Options.Email,
 		Key: &jose.JSONWebKey{
 			Key: privKey,
@@ -75,7 +77,7 @@ func (c *RegCommand) Execute(args []string) error {
 	log.Printf("DEBUG: RegistrationInfo: %#v\n", reg)
 
 	ri.Registration = reg
-	if err := store.SaveRegistration(ri); err != nil {
+	if err := store.SaveRegistration(ctx, ri); err != nil {
 		log.Println("ERROR: unable to save the registration")
 		return err
 	}

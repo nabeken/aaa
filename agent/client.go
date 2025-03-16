@@ -4,9 +4,9 @@ import (
 	"crypto"
 	"os"
 
-	"github.com/go-acme/lego/v3/lego"
-	"github.com/go-acme/lego/v3/registration"
-	"gopkg.in/square/go-jose.v2"
+	"github.com/go-acme/lego/v4/lego"
+	"github.com/go-acme/lego/v4/registration"
+	"github.com/go-jose/go-jose/v4"
 )
 
 var DefaultDirectoryURL = "https://acme-staging-v02.api.letsencrypt.org/directory"
@@ -35,6 +35,7 @@ func DirectoryURL() string {
 	if url := os.Getenv("AAA_DIRECTORY_URL"); url != "" {
 		return url
 	}
+
 	return DefaultDirectoryURL
 }
 
@@ -43,5 +44,6 @@ func DirectoryURL() string {
 func NewLegoClient(ri *RegistrationInfo) (*lego.Client, error) {
 	config := lego.NewConfig(ri)
 	config.CADirURL = DirectoryURL()
+
 	return lego.NewClient(config)
 }

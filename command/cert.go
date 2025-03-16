@@ -1,12 +1,13 @@
 package command
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"log"
 
-	"github.com/go-acme/lego/v3/certificate"
-	"github.com/go-acme/lego/v3/providers/dns"
+	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v4/providers/dns"
 	"github.com/nabeken/aaa/agent"
 	"github.com/pkg/errors"
 )
@@ -31,7 +32,7 @@ func (c *CertCommand) Execute(args []string) error {
 		CreateKey:  c.CreateKey,
 		RSAKeySize: c.RSAKeySize,
 		Store:      store,
-	}).Run()
+	}).Run(context.Background())
 }
 
 type CertService struct {
@@ -43,10 +44,10 @@ type CertService struct {
 	Store      *agent.Store
 }
 
-func (svc *CertService) Run() error {
+func (svc *CertService) Run(ctx context.Context) error {
 	log.Print("INFO: now issuing certificate...")
 
-	ri, err := svc.Store.LoadRegistration()
+	ri, err := svc.Store.LoadRegistration(ctx)
 	if err != nil {
 		return errors.Wrap(err, "unable to load the registration")
 	}
@@ -57,7 +58,7 @@ func (svc *CertService) Run() error {
 	}
 
 	// trying to load the key
-	key, err := svc.Store.LoadCertKey(svc.CommonName)
+	key, err := svc.Store.LoadCertKey(ctx, svc.CommonName)
 	if err != nil {
 		if err != agent.ErrFileNotFound {
 			return errors.Wrap(err, "failed to load the key")
@@ -80,7 +81,7 @@ func (svc *CertService) Run() error {
 		}
 
 		// storing private key for certificate
-		if err := svc.Store.SaveCertKey(svc.CommonName, certPrivkey); err != nil {
+		if err := svc.Store.SaveCertKey(ctx, svc.CommonName, certPrivkey); err != nil {
 			return errors.Wrap(err, "failed to store the private key for the cert")
 		}
 
@@ -106,7 +107,7 @@ func (svc *CertService) Run() error {
 		return errors.Wrap(err, "unable to obtain the certificate")
 	}
 
-	if err := svc.Store.SaveCert(svc.CommonName, cert.Certificate); err != nil {
+	if err := svc.Store.SaveCert(ctx, svc.CommonName, cert.Certificate); err != nil {
 		return errors.Wrap(err, "failed to store the certificate")
 	}
 
