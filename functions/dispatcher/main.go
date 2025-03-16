@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
-	"github.com/nabeken/aaa/command"
-	"github.com/nabeken/aaa/slack"
+	"github.com/nabeken/aaa/v3/command"
+	"github.com/nabeken/aaa/v3/slack"
 	"github.com/pkg/errors"
 )
 

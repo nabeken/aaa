@@ -13,9 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/nabeken/aaa/agent"
-	"github.com/nabeken/aaa/command"
-	"github.com/nabeken/aaa/slack"
+	"github.com/nabeken/aaa/v3/agent"
+	"github.com/nabeken/aaa/v3/command"
+	"github.com/nabeken/aaa/v3/slack"
 	"github.com/nabeken/aws-go-s3/v2/bucket"
 	"github.com/pkg/errors"
 )

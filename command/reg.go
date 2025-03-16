@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-acme/lego/v4/registration"
 	"github.com/go-jose/go-jose/v4"
-	"github.com/nabeken/aaa/agent"
+	"github.com/nabeken/aaa/v3/agent"
 )
 
 type RegCommand struct {

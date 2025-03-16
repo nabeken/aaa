@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/providers/dns"
-	"github.com/nabeken/aaa/agent"
+	"github.com/nabeken/aaa/v3/agent"
 	"github.com/pkg/errors"
 )
 
