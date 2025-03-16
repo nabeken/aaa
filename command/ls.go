@@ -37,7 +37,7 @@ func (svc *LsService) WriteTo(format string, w io.Writer) error {
 	case "json":
 		return json.NewEncoder(w).Encode(output)
 	default:
-		return errors.Errorf("'%s' is not implemented")
+		return errors.Errorf("'%s' is not implemented", format)
 	}
 }
 
