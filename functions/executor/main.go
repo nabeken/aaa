@@ -97,7 +97,7 @@ func (d *dispatcher) handleUploadCommand(ctx context.Context, arg string, slcmd 
 	), nil
 }
 
-func realmain(event json.RawMessage) (interface{}, error) {
+func realmain(event json.RawMessage) (any, error) {
 	slcmd, err := slack.ParseCommand(event)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to parse the command")

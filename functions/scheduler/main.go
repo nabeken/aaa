@@ -34,7 +34,7 @@ var (
 	s3KMSKeyID = os.Getenv("KMS_KEY_ID")
 )
 
-func realmain(event json.RawMessage) (interface{}, error) {
+func realmain(event json.RawMessage) (any, error) {
 	lsSvc := &command.LsService{
 		Filer: agent.NewS3Filer(s3b, s3KMSKeyID),
 	}
