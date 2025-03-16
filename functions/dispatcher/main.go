@@ -1,19 +1,21 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	golambda "github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/nabeken/aaa/command"
 	"github.com/nabeken/aaa/slack"
 	"github.com/pkg/errors"
 )
 
-var lambdaSvc *lambda.Lambda
+var lambdaSvc *lambda.Client
 
 func realmain(event json.RawMessage) (*slack.CommandResponse, error) {
 	token := os.Getenv("SLACK_TOKEN")
@@ -34,11 +36,13 @@ func realmain(event json.RawMessage) (*slack.CommandResponse, error) {
 
 	req := &lambda.InvokeInput{
 		FunctionName:   aws.String(executorFuncName),
-		InvocationType: aws.String(lambda.InvocationTypeEvent),
+		InvocationType: types.InvocationTypeEvent,
 		Payload:        event,
 	}
 
-	if _, err := lambdaSvc.Invoke(req); err != nil {
+	ctx := context.Background()
+
+	if _, err := lambdaSvc.Invoke(ctx, req); err != nil {
 		return nil, errors.Wrap(err, "failed to invoke the executor")
 	}
 
@@ -51,7 +55,7 @@ func realmain(event json.RawMessage) (*slack.CommandResponse, error) {
 }
 
 func main() {
-	lambdaSvc = lambda.New(session.Must(session.NewSession()))
+	lambdaSvc = lambda.NewFromConfig(command.MustNewAWSConfig(context.Background()))
 
 	golambda.Start(realmain)
 }

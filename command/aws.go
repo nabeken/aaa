@@ -1,7 +1,17 @@
 package command
 
-import "github.com/aws/aws-sdk-go/aws/session"
+import (
+	"context"
 
-func NewAWSSession() *session.Session {
-	return session.Must(session.NewSession())
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+)
+
+func MustNewAWSConfig(ctx context.Context) aws.Config {
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	return cfg
 }
