@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/nabeken/aaa/v3/agent"
 	"github.com/nabeken/aws-go-s3/v2/bucket"
-	"github.com/pkg/errors"
 )
 
 type LsCommand struct {
@@ -41,7 +41,7 @@ func (svc *LsService) WriteTo(ctx context.Context, format string, w io.Writer) e
 	case "json":
 		return json.NewEncoder(w).Encode(output)
 	default:
-		return errors.Errorf("'%s' is not implemented", format)
+		return fmt.Errorf("'%s' is not implemented", format)
 	}
 }
 
@@ -50,18 +50,18 @@ func (svc *LsService) FetchData(ctx context.Context) ([]Domain, error) {
 
 	emails, err := svc.listAccounts(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list the accounts")
+		return nil, fmt.Errorf("listing the accounts: %w", err)
 	}
 
 	for _, email := range emails {
 		store, err := agent.NewStore(email, svc.Filer)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to initialize the store")
+			return nil, fmt.Errorf("initializing the store: %w", err)
 		}
 
 		domains, err := store.ListDomains(ctx)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to list the domains")
+			return nil, fmt.Errorf("listing the domains: %w", err)
 		}
 
 		for _, dom := range domains {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"github.com/nabeken/aaa/v3/command"
 	"github.com/nabeken/aaa/v3/slack"
 	"github.com/nabeken/aws-go-s3/v2/bucket"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -34,7 +34,7 @@ var (
 	s3KMSKeyID = os.Getenv("KMS_KEY_ID")
 )
 
-func realmain(event json.RawMessage) (interface{}, error) {
+func realmain(event json.RawMessage) (any, error) {
 	lsSvc := &command.LsService{
 		Filer: agent.NewS3Filer(s3b, s3KMSKeyID),
 	}
@@ -48,7 +48,7 @@ func realmain(event json.RawMessage) (interface{}, error) {
 
 	domains, err := lsSvc.FetchData(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list all domains")
+		return nil, fmt.Errorf("listing all the domains: %w", err)
 	}
 
 	now := time.Now()
@@ -75,7 +75,7 @@ func realmain(event json.RawMessage) (interface{}, error) {
 
 		payload, err := json.Marshal(slcmd)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to encode the payload")
+			return nil, fmt.Errorf("encoding the payload: %w", err)
 		}
 
 		req := &lambda.InvokeInput{
@@ -85,7 +85,7 @@ func realmain(event json.RawMessage) (interface{}, error) {
 		}
 
 		if _, err := lambdaSvc.Invoke(context.TODO(), req); err != nil {
-			return nil, errors.Wrap(err, "failed to invoke the executor")
+			return nil, fmt.Errorf("invoking the executor: %w", err)
 		}
 
 		slackReq := &slack.CommandResponse{
@@ -94,7 +94,7 @@ func realmain(event json.RawMessage) (interface{}, error) {
 		}
 
 		if err := slack.PostResponse(slackURL, slackReq); err != nil {
-			return nil, errors.Wrap(err, "failed to send a response to Slack")
+			return nil, fmt.Errorf("sending the response to Slack: %w", err)
 		}
 	}
 

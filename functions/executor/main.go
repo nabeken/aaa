@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/nabeken/aaa/v3/command"
 	"github.com/nabeken/aaa/v3/slack"
 	"github.com/nabeken/aws-go-s3/v2/bucket"
-	"github.com/pkg/errors"
 )
 
 var options struct {
@@ -31,7 +31,7 @@ type dispatcher struct {
 func (d *dispatcher) handleCertCommand(ctx context.Context, arg string, slcmd *slack.Command) (string, error) {
 	store, err := command.NewStore(options.Email, options.S3Bucket, options.S3KMSKeyID)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to initialize the store")
+		return "", fmt.Errorf("initializing the store: %w", err)
 	}
 
 	// opts is a subset of command.CertCommand.
@@ -97,10 +97,10 @@ func (d *dispatcher) handleUploadCommand(ctx context.Context, arg string, slcmd 
 	), nil
 }
 
-func realmain(event json.RawMessage) (interface{}, error) {
+func realmain(event json.RawMessage) (any, error) {
 	slcmd, err := slack.ParseCommand(event)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to parse the command")
+		return "", fmt.Errorf("parsing the command: %w", err)
 	}
 
 	log.Println("slack command:", slcmd)

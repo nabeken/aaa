@@ -2,6 +2,6 @@ package agent
 
 import "log"
 
-func Debug(v ...interface{}) {
-	log.Print(append([]interface{}{"DEBUG: "}, v...)...)
+func Debug(v ...any) {
+	log.Print(append([]any{"DEBUG: "}, v...)...)
 }
