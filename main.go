@@ -23,32 +23,43 @@ func realmain() int {
 	return 0
 }
 
+func mustAddCommand(
+	command string,
+	shortDescription string,
+	longDescription string,
+	data any,
+) {
+	if _, err := parser.AddCommand(command, shortDescription, longDescription, data); err != nil {
+		panic(err)
+	}
+}
+
 func init() {
-	parser.AddCommand(
+	mustAddCommand(
 		"reg",
 		"Register an account to Let's Encrypt",
 		"The reg command registers an account.",
 		&command.RegCommand{},
 	)
-	parser.AddCommand(
+	mustAddCommand(
 		"cert",
 		"Issue certificates",
 		"The cert command issues certificates.",
 		&command.CertCommand{},
 	)
-	parser.AddCommand(
+	mustAddCommand(
 		"ls",
 		"List domains",
 		"The ls command lists domains.",
 		&command.LsCommand{},
 	)
-	parser.AddCommand(
+	mustAddCommand(
 		"sync",
 		"Sync the certificates",
 		"The sync command synchronizes the certificates from S3.",
 		&command.SyncCommand{},
 	)
-	parser.AddCommand(
+	mustAddCommand(
 		"upload",
 		"Upload the certificate to IAM",
 		"The upload command uploads the certificates to IAM.",

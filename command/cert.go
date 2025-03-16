@@ -96,7 +96,9 @@ func (svc *CertService) Run(ctx context.Context) error {
 		return fmt.Errorf("initializing the challenge provider: %w", err)
 	}
 
-	client.Challenge.SetDNS01Provider(provider)
+	if err := client.Challenge.SetDNS01Provider(provider); err != nil {
+		return fmt.Errorf("setting the DNS provider: %w", err)
+	}
 
 	request := certificate.ObtainRequest{
 		Domains:    append([]string{svc.CommonName}, svc.Domains...),
