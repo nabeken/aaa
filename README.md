@@ -11,14 +11,14 @@ I've tagged the codebase at of March 16, 2025 as `v2.0.0`. `master` branch is fo
 - Authorize domains with Route53
 - Persist the registration information and certificate on S3
 - Upload certificates to ACM
-- Run with Slack command over the API Gateway + Lambda (deploy with [Apex](https://apex.run/))
+- (Planned) Run with Slack command over the Lambda HTTP Endpoint
 
 ## Installation
 
 aaa is still in beta so no pre-built binaries are available.
 
 ```sh
-go get -u github.com/nabeken/aaa
+go install github.com/nabeken/aaa@v3
 ```
 
 ## S3 Bucket and KMS Usage
@@ -175,99 +175,7 @@ Or
 
 ## Slack integration with AWS Lambda
 
-We integrate `aaa` with Slack's [Slash Commands](https://api.slack.com/slash-commands) by Apex. To do this, we need:
-
-- AWS API Gateway that invokes...
-- AWS Lambda Function `aaa_dispatcher` synchronously that invokes ...
-- AWS Lambda Function `aaa_executor` asynchronously
-
-We should respond to Slash Commands within 3 seconds so we have to defer to `aaa_executor` asynchronously.
-
-Steps: (assumes that you have already the KMS key and the S3 bucket)
-
-1. Create a Slash Command `/letsencrypt` in Slack but let the endpoint URL be empty
-2. Create a IAM role for the lambda functions
-3. Create a Apex configuration `project.json`
-5. Deploy the lambda functions by apex
-4. Create a API Gateway `aaa-dispatcher-gateway` and deploy it
-6. Update the Slash Command to fill the endpoint URL that points to the `aaa-dispatcher-gateway`
-
-Here we go!
-
-### Create a Slash Command
-
-Please see https://api.slack.com/slash-commands for detail. Here, `token` parameter is needed.
-
-### Create a IAM role
-
-We need a IAM role for Lambda environment.
-
-Please create a IAM role `aaa-lambda`. It should have the following managed policies:
-
-- `AmazonS3FullAccess`
-- `AmazonRoute53FullAccess`
-- `CloudWatchLogsFullAccesss`
-- `AWSLambdaRole`
-- `IAMFullAccess`
-
-and the following inline policy `aaa-kms`:
-
-```json
-{
-  "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Action": [
-          "kms:Decrypt"
-        ],
-        "Resource": [
-          "<KMS_KEY_ARN>"
-        ]
-      }
-    ]
-}
-```
-
-### Create a Apex configuration
-
-```sh
-# Copy sample
-cp project.json.example project.json
-
-# Fill it
-$EDITOR project.json
-```
-
-### Deploy the functions
-
-```sh
-# dryrun
-apex deploy -D
-
-# If everything is okay, then shipit
-apex deploy
-```
-
-### Create a API Gateway
-
-Create an API named `aaa-dispatcher-gateway`.
-
-We really don't care about how resources are located but we need a resource that accepts `POST` method and some configurations for the resource:
-
-- Integration Request
-  - ***Integration type***: Lambda Function
-  - ***Lambda Region***: (Select your region)
-  - ***Lambda Function***: `aaa-dispatcher`
-  - ***Mapping Templates***: Set `Content-Type: application/x-www-form-urlencoded` and create mapping tables that converts POST form request into JSON. You can find some examples on the Internet.
-    - http://qiita.com/satetsu888/items/40fc387735192b794da8 (in Japanese)
-    - https://forums.aws.amazon.com/thread.jspa?messageID=673012&tstart=0#673012
-
-Then, deploy API. You will get a invoke URL for the resource.
-
-### Update the Slash Command to fill the endpoint URL
-
-Finally, you can fill the URL in `Integration Settings`.
+TBD: will be reworked with Lambda HTTP Endpoint with Terraform.
 
 ## Automatic renewal
 
