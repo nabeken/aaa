@@ -18,6 +18,7 @@ type CertCommand struct {
 	Domains    []string `long:"domain" description:"Domains to be issued as Subject Alternative Names"`
 	CreateKey  bool     `long:"create-key" description:"Create a new keypair"`
 	RSAKeySize int      `long:"rsa-key-size" description:"Size of the RSA key, only used if create-key is specified. (allowed: 2048 / 4096)" default:"4096"`
+	BundleCA   bool     `long:"bundle-ca" description:"Bundle issuer CA certificate with the issued certificate"`
 }
 
 func (c *CertCommand) Execute(args []string) error {
@@ -32,6 +33,7 @@ func (c *CertCommand) Execute(args []string) error {
 		Domains:    c.Domains,
 		CreateKey:  c.CreateKey,
 		RSAKeySize: c.RSAKeySize,
+		BundleCA:   c.BundleCA,
 		Store:      store,
 	}).Run(context.Background())
 }
@@ -42,6 +44,7 @@ type CertService struct {
 	Domains    []string
 	CreateKey  bool
 	RSAKeySize int
+	BundleCA   bool
 	Store      *agent.Store
 }
 
@@ -103,6 +106,7 @@ func (svc *CertService) Run(ctx context.Context) error {
 	request := certificate.ObtainRequest{
 		Domains:    append([]string{svc.CommonName}, svc.Domains...),
 		PrivateKey: key,
+		Bundle:     svc.BundleCA,
 	}
 
 	cert, err := client.Certificate.Obtain(request)
